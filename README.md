@@ -51,6 +51,7 @@ weather_digest/
 
 ### 週次まとめ（Ollama / qwen）
 
+- [5/24〜5/31](./articles/weekly/2026-0531.md)
 <!-- 週次記事リンクがここに追加されます -->
 
 ### Haiku週次まとめ（Claude Haiku）
