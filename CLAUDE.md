@@ -6,7 +6,7 @@
 
 | エンジン | 実行時刻 | スクリプト |
 |---|---|---|
-| Claude Haiku（Anthropic API） | 毎週月曜 08:00 | `run_weather.sh` → `haiku_agent.py` |
+| Claude Haiku（Anthropic API） | 毎週日曜 08:00 | `run_weather.sh` → `haiku_agent.py` |
 
 ---
 
