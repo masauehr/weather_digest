@@ -2,23 +2,22 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN"
   "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <!--
-  com.user.weather_digest.plist — launchd設定ファイル
-  設置先: ~/Library/LaunchAgents/com.user.weather_digest.plist
-  登録:   launchctl load ~/Library/LaunchAgents/com.user.weather_digest.plist
-  手動実行: launchctl start com.user.weather_digest
-  解除:   launchctl unload ~/Library/LaunchAgents/com.user.weather_digest.plist
+  com.user.weather_digest_ollama.plist — launchd設定（Ollama版）
+  設置先: ~/Library/LaunchAgents/com.user.weather_digest_ollama.plist
+  登録:   launchctl load ~/Library/LaunchAgents/com.user.weather_digest_ollama.plist
+  手動実行: launchctl start com.user.weather_digest_ollama
 
-  実行タイミング: 毎週月曜 08:00（ai_newsの土曜実行とは別曜日）
+  実行タイミング: 毎週日曜 08:00
 -->
 <plist version="1.0">
 <dict>
   <key>Label</key>
-  <string>com.user.weather_digest</string>
+  <string>com.user.weather_digest_ollama</string>
 
   <key>ProgramArguments</key>
   <array>
     <string>/bin/bash</string>
-    <string>/Users/masahiro/projects/weather_digest/scripts/run_weather.sh</string>
+    <string>/Users/masahiro/projects/weather_digest/scripts/run_weather_ollama.sh</string>
   </array>
 
   <!-- 実行スケジュール: 毎週日曜 08:00 -->
@@ -40,7 +39,6 @@
     <string>/Users/masahiro</string>
     <key>LANG</key>
     <string>ja_JP.UTF-8</string>
-    <!-- ANTHROPIC_API_KEY は ~/.anthropic_env から読み込まれる（シェルスクリプト内で処理） -->
   </dict>
 
   <key>StandardOutPath</key>
