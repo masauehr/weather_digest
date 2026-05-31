@@ -21,11 +21,11 @@
     <string>/Users/masahiro/projects/weather_digest/scripts/run_weather.sh</string>
   </array>
 
-  <!-- 実行スケジュール: 毎週月曜 08:00 -->
+  <!-- 実行スケジュール: 毎週日曜 08:00 -->
   <key>StartCalendarInterval</key>
   <dict>
     <key>Weekday</key>
-    <integer>1</integer>
+    <integer>0</integer>
     <key>Hour</key>
     <integer>8</integer>
     <key>Minute</key>

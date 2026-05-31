@@ -64,8 +64,8 @@ macOS の launchd が `scripts/run_weather.sh` を呼び出し、
 
 | タイミング | 内容 |
 |---|---|
-| 毎週月曜 08:00 JST | Claude Haiku が週次記事を自動生成・git push |
-| 毎月第1月曜 08:00 JST | 上記に加えて月次まとめも生成 |
+| 毎週日曜 08:00 JST | Claude Haiku が週次記事を自動生成・git push |
+| 毎月第1日曜 08:00 JST | 上記に加えて月次まとめも生成 |
 
 ### 手動実行
 

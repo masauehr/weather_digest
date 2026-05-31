@@ -1,6 +1,6 @@
 #!/bin/bash
 # run_weather.sh — Claude Haiku による気象ニュース週次まとめ 自動実行スクリプト
-# launchd から毎週月曜 08:00 に呼び出される。
+# launchd から毎週日曜 08:00 に呼び出される。
 
 set -euo pipefail
 
