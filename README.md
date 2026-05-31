@@ -2,7 +2,7 @@
 
 **🌐 公開サイト: https://masauehr.github.io/weather_digest/**
 
-> 詳しい仕様は [SPEC.md](./SPEC.md) を参照。
+> 詳しくは [weather-digest.md](./weather-digest.md) を参照。仕様の詳細は [SPEC.md](./SPEC.md) を参照。
 
 ## クイックリンク
 
