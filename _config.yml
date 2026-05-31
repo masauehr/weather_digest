@@ -1,0 +1,23 @@
+title: 気象ニュースダイジェスト
+description: 気象・気候・防災に関する最新情報を週次・月次でまとめたダイジェスト
+baseurl: "/weather_digest"
+url: "https://masauehr.github.io"
+lang: ja
+
+markdown: kramdown
+kramdown:
+  input: GFM
+  hard_wrap: false
+
+permalink: pretty
+
+exclude:
+  - scripts/
+  - CLAUDE.md
+  - SPEC.md
+  - weather_digest.log
+  - .claude/
+  - Gemfile
+  - Gemfile.lock
+  - vendor/
+  - README.md
