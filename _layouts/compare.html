@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{% if page.title %}{{ page.title }} | {{ site.title }}{% else %}{{ site.title }}{% endif %}</title>
+  <meta name="description" content="{{ site.description }}">
+  <style>
+    :root {
+      --primary: #0d2b45;
+      --accent: #1a3d5c;
+      --highlight: #1565c0;
+      --link: #1976d2;
+      --text: #212121;
+      --muted: #666;
+      --bg: #f0f7ff;
+      --surface: #ffffff;
+      --border: #cde3f5;
+      --ollama-bg: #e8f5e9;
+      --ollama-border: #66bb6a;
+      --ollama-header: #2e7d32;
+      --haiku-bg: #e3f2fd;
+      --haiku-border: #42a5f5;
+      --haiku-header: #1565c0;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'Hiragino Sans', 'Hiragino Kaku Gothic ProN', 'Noto Sans JP', 'Yu Gothic', sans-serif;
+      font-size: 15px;
+      line-height: 1.8;
+      color: var(--text);
+      background: var(--bg);
+    }
+
+    header {
+      background: var(--primary);
+      color: white;
+      padding: 1.2rem 2rem;
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+    }
+    header .logo { font-size: 1.5rem; }
+    header .title-block { flex: 1; }
+    header h1 { font-size: 1.25rem; font-weight: 700; }
+    header h1 a { color: white; text-decoration: none; }
+    header h1 a:hover { opacity: 0.85; }
+    header .subtitle { font-size: 0.8rem; opacity: 0.7; margin-top: 0.15rem; }
+
+    nav {
+      background: var(--accent);
+      padding: 0 2rem;
+      display: flex;
+      align-items: center;
+      overflow-x: auto;
+    }
+    nav a {
+      color: #b0c4de;
+      text-decoration: none;
+      font-size: 0.875rem;
+      padding: 0.7rem 1rem;
+      white-space: nowrap;
+      border-bottom: 3px solid transparent;
+      transition: color 0.2s, border-color 0.2s;
+    }
+    nav a:hover { color: white; border-bottom-color: #64b5f6; }
+
+    main { max-width: 1400px; margin: 1.5rem auto; padding: 0 1.5rem; }
+
+    /* 比較ヘッダー */
+    .compare-header {
+      text-align: center;
+      margin-bottom: 1.5rem;
+    }
+    .compare-header h1 {
+      font-size: 1.6rem;
+      font-weight: 800;
+      color: var(--primary);
+      margin-bottom: 0.5rem;
+    }
+    .compare-meta {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.5rem;
+      flex-wrap: wrap;
+      font-size: 0.88rem;
+    }
+    .badge {
+      display: inline-block;
+      padding: 0.2rem 0.7rem;
+      border-radius: 999px;
+      font-weight: 700;
+      font-size: 0.82rem;
+    }
+    .badge.ollama { background: var(--ollama-bg); color: var(--ollama-header); border: 1px solid var(--ollama-border); }
+    .badge.haiku  { background: var(--haiku-bg);  color: var(--haiku-header);  border: 1px solid var(--haiku-border); }
+
+    /* 2カラム比較レイアウト */
+    .compare-wrapper {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 1.2rem;
+      margin-bottom: 2rem;
+    }
+
+    .compare-panel {
+      border-radius: 10px;
+      overflow: hidden;
+      border: 2px solid;
+      background: var(--surface);
+    }
+    .compare-panel.ollama-panel { border-color: var(--ollama-border); }
+    .compare-panel.haiku-panel  { border-color: var(--haiku-border); }
+
+    .panel-header-bar {
+      display: flex;
+      align-items: center;
+      gap: 0.6rem;
+      padding: 0.6rem 1rem;
+      font-size: 0.88rem;
+      font-weight: 700;
+    }
+    .ollama-panel .panel-header-bar { background: var(--ollama-header); color: white; }
+    .haiku-panel  .panel-header-bar { background: var(--haiku-header);  color: white; }
+
+    .model-badge { font-size: 1rem; }
+    .model-name  { font-family: monospace; font-size: 0.82rem; opacity: 0.85; }
+
+    .panel-body {
+      padding: 1.2rem 1.4rem;
+      overflow-y: auto;
+      max-height: 80vh;
+    }
+
+    /* 記事本文スタイル（パネル内） */
+    .panel-body h1 { font-size: 1.4rem; font-weight: 800; color: var(--primary); border-bottom: 2px solid var(--highlight); padding-bottom: 0.4rem; margin-bottom: 1rem; }
+    .panel-body h2 { font-size: 1.15rem; font-weight: 700; color: var(--highlight); margin: 1.8rem 0 0.7rem; padding-left: 0.6rem; border-left: 3px solid var(--highlight); }
+    .panel-body h3 { font-size: 1rem; font-weight: 700; margin: 1.2rem 0 0.5rem; color: var(--accent); }
+    .panel-body p  { margin-bottom: 0.8rem; }
+    .panel-body a  { color: var(--link); text-decoration: none; }
+    .panel-body a:hover { text-decoration: underline; }
+    .panel-body ul, .panel-body ol { padding-left: 1.4rem; margin-bottom: 0.8rem; }
+    .panel-body li { margin-bottom: 0.3rem; }
+    .panel-body strong { font-weight: 700; }
+    .panel-body blockquote { border-left: 3px solid #90caf9; padding: 0.5rem 1rem; background: #e8f4fd; color: #555; margin: 0.8rem 0; border-radius: 0 4px 4px 0; }
+    .panel-body blockquote p { margin-bottom: 0; }
+    .panel-body hr { border: none; border-top: 1px solid var(--border); margin: 1.5rem 0; }
+    .panel-body code { background: #f0f0f0; border: 1px solid #e0e0e0; padding: 0.1rem 0.35rem; border-radius: 3px; font-size: 0.85em; font-family: monospace; }
+    .panel-body table { border-collapse: collapse; width: 100%; margin: 1rem 0; font-size: 0.88rem; }
+    .panel-body th { background: var(--primary); color: white; padding: 0.5rem 0.8rem; text-align: left; }
+    .panel-body td { border: 1px solid var(--border); padding: 0.45rem 0.8rem; }
+    .panel-body tr:nth-child(even) td { background: #f0f7ff; }
+
+    /* 過去記事グリッド */
+    .past-articles { margin-top: 2rem; }
+    .past-articles h2 { font-size: 1.2rem; font-weight: 700; color: var(--primary); border-bottom: 2px solid var(--border); padding-bottom: 0.4rem; margin-bottom: 1rem; }
+    .past-articles-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 1rem; }
+    .past-col h3 { font-size: 0.95rem; font-weight: 700; color: var(--accent); margin-bottom: 0.5rem; }
+    .article-list { list-style: none; padding: 0; display: grid; gap: 0.4rem; }
+    .article-list.compact li { padding: 0.4rem 0.8rem; }
+    .article-list li {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 0.6rem 1rem;
+      transition: border-color 0.2s;
+    }
+    .article-list li:hover { border-color: var(--link); }
+    .article-list a { font-weight: 600; color: var(--link); text-decoration: none; font-size: 0.9rem; }
+    .article-list a:hover { text-decoration: underline; }
+    .article-list .date { font-size: 0.78rem; color: var(--muted); margin-left: 0.5rem; }
+    .view-all { display: inline-block; margin-top: 0.5rem; font-size: 0.82rem; color: var(--link); text-decoration: none; }
+    .view-all:hover { text-decoration: underline; }
+
+    footer {
+      text-align: center;
+      padding: 2rem;
+      color: var(--muted);
+      font-size: 0.85rem;
+      border-top: 1px solid var(--border);
+      margin-top: 3rem;
+    }
+    footer a { color: var(--link); text-decoration: none; }
+
+    @media (max-width: 900px) {
+      .compare-wrapper { grid-template-columns: 1fr; }
+      .past-articles-grid { grid-template-columns: repeat(2, 1fr); }
+    }
+    @media (max-width: 600px) {
+      header { padding: 1rem; }
+      header .logo { display: none; }
+      main { padding: 0 0.8rem; }
+      .past-articles-grid { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="logo">🌤️</div>
+    <div class="title-block">
+      <h1><a href="{{ site.baseurl }}/">気象ニュースダイジェスト</a></h1>
+      <div class="subtitle">気象・気候・防災の最新情報を週次・月次で自動収集・要約</div>
+    </div>
+  </header>
+  <nav>
+    <a href="{{ site.baseurl }}/">ホーム</a>
+    <a href="{{ site.baseurl }}/articles/weekly/">Ollama週次</a>
+    <a href="{{ site.baseurl }}/articles/haiku_weekly/">Haiku週次</a>
+    <a href="{{ site.baseurl }}/articles/compare/">モデル比較</a>
+    <a href="{{ site.baseurl }}/articles/monthly/">月次まとめ</a>
+    <a href="{{ site.baseurl }}/articles/topics/">トピックス</a>
+    <a href="https://github.com/masauehr/weather_digest" target="_blank" rel="noopener">GitHub ↗</a>
+  </nav>
+  <main>
+    {{ content }}
+  </main>
+  <footer>
+    <p>
+      自動生成 by <a href="https://github.com/masauehr/weather_digest" target="_blank" rel="noopener">masauehr/weather_digest</a>
+      &nbsp;|&nbsp; Ollama（qwen3.6:35b-mlx） vs Claude Haiku
+    </p>
+  </footer>
+</body>
+</html>

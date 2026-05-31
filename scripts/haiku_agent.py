@@ -90,7 +90,7 @@ TOOLS = [
             "properties": {
                 "path": {
                     "type": "string",
-                    "description": "書き込み先（例: articles/weekly/2026-0602.md）",
+                    "description": "書き込み先（例: articles/haiku_weekly/2026-0602.md）",
                 },
                 "content": {
                     "type": "string",
@@ -114,7 +114,7 @@ TOOLS = [
     {
         "name": "append_to_readme",
         "description": (
-            "README.md の週次まとめセクションに週次リンクを追加する。"
+            "README.md の Haiku週次まとめセクションに週次リンクを追加する。"
             "README の直接編集には使わないこと。このツール専用。"
         ),
         "input_schema": {
@@ -126,7 +126,7 @@ TOOLS = [
                 },
                 "week_path": {
                     "type": "string",
-                    "description": "週次記事の相対パス（例: ./articles/weekly/2026-0602.md）",
+                    "description": "週次記事の相対パス（例: ./articles/haiku_weekly/2026-0602.md）",
                 },
             },
             "required": ["week_label", "week_path"],
@@ -135,7 +135,7 @@ TOOLS = [
     {
         "name": "update_index",
         "description": (
-            "GitHub Pages サイトの index.md の週次記事リストを更新する。"
+            "GitHub Pages サイトの index.md の Haiku週次記事リストを更新する。"
             "append_to_readme の直後に必ず呼ぶこと。"
         ),
         "input_schema": {
@@ -147,7 +147,7 @@ TOOLS = [
                 },
                 "week_path": {
                     "type": "string",
-                    "description": "週次記事の相対パス（例: ./articles/weekly/2026-0602.md）",
+                    "description": "週次記事の相対パス（例: ./articles/haiku_weekly/2026-0602.md）",
                 },
             },
             "required": ["week_label", "week_path"],
@@ -249,7 +249,7 @@ def tool_append_to_readme(week_label: str, week_path: str) -> str:
 
     while i < len(lines):
         result.append(lines[i])
-        if not inserted and lines[i].strip() == "### 週次まとめ":
+        if not inserted and lines[i].strip() == "### Haiku週次まとめ（Claude Haiku）":
             if i + 1 < len(lines) and lines[i + 1].strip() == "":
                 result.append(lines[i + 1])
                 i += 1
@@ -258,7 +258,7 @@ def tool_append_to_readme(week_label: str, week_path: str) -> str:
         i += 1
 
     readme.write_text("\n".join(result), encoding="utf-8")
-    log(f"append_to_readme: {new_line}")
+    log(f"append_to_readme (haiku): {new_line}")
     return f"README 更新完了: {new_line}"
 
 
@@ -281,7 +281,7 @@ def _insert_li_at_top_of_ul(md_path: Path, new_li: str) -> bool:
 def tool_update_index(week_label: str, week_path: str) -> str:
     w_stem = Path(week_path).stem          # "2026-0602"
     w_year, w_mmdd = w_stem.split("-", 1)  # "2026", "0602"
-    w_href = f"articles/weekly/{w_year}-{w_mmdd}"
+    w_href = f"articles/haiku_weekly/{w_year}-{w_mmdd}"
     w_date = f"{w_year}-{w_mmdd[:2]}-{w_mmdd[2:]}"
     week_li = (
         f'  <li><a href="{{{{ site.baseurl }}}}/{w_href}">'
@@ -290,14 +290,27 @@ def tool_update_index(week_label: str, week_path: str) -> str:
 
     results = []
 
+    # トップページ index.md の ⚡ Haiku週次まとめ セクションに挿入
     top = PROJECT_DIR / "index.md"
-    if _insert_li_at_top_of_ul(top, week_li):
+    if top.exists():
+        lines = top.read_text(encoding="utf-8").split("\n")
+        out = []
+        in_haiku = False
+        haiku_done = False
+        for line in lines:
+            out.append(line)
+            if '<h2 class="section-title">' in line:
+                in_haiku = "⚡ Haiku週次まとめ" in line
+            if in_haiku and not haiku_done and line.strip() == '<ul class="article-list">':
+                out.append(week_li)
+                haiku_done = True
+        top.write_text("\n".join(out), encoding="utf-8")
         results.append("index.md")
 
-    if _insert_li_at_top_of_ul(PROJECT_DIR / "articles/weekly/index.md", week_li):
-        results.append("articles/weekly/index.md")
+    if _insert_li_at_top_of_ul(PROJECT_DIR / "articles/haiku_weekly/index.md", week_li):
+        results.append("articles/haiku_weekly/index.md")
 
-    log(f"update_index: {week_label} → {results}")
+    log(f"update_index (haiku): {week_label} → {results}")
     return f"index.md 更新完了: {', '.join(results)}"
 
 
@@ -350,7 +363,7 @@ SYSTEM_PROMPT_TMPL = """\
 # 基本情報
 - 今日: {today}
 - 実行モード: {mode}
-- 週次ファイルパス: articles/weekly/{year}-{week_file}.md
+- 週次ファイルパス: articles/haiku_weekly/{year}-{week_file}.md
 - 週表示ラベル: {week_label}（記事タイトル・READMEリンクに使用）
 
 # 作業手順
@@ -371,17 +384,17 @@ SYSTEM_PROMPT_TMPL = """\
    - https://public.wmo.int/en/media/news
 
 3. **記事生成** — 収集した情報を統合して週次記事を生成し、write_article で保存する
-   - ファイルパスは必ず articles/weekly/{year}-{week_file}.md を使うこと
+   - ファイルパスは必ず articles/haiku_weekly/{year}-{week_file}.md を使うこと
 
 4. **README 更新** — append_to_readme ツールで週次リンクを追加する
 
 5. **index.md 更新** — update_index ツールで GitHub Pages のトップページ記事リストを更新する
 
 6. **コミット** — git_commit_push で以下のファイルをコミット・プッシュする
-   - articles/weekly/{year}-{week_file}.md
+   - articles/haiku_weekly/{year}-{week_file}.md
    - README.md
    - index.md
-   - articles/weekly/index.md
+   - articles/haiku_weekly/index.md
 
 # 記事フォーマット（必ず守ること）
 - ファイル: articles/weekly/{year}-{week_file}.md
@@ -394,11 +407,11 @@ SYSTEM_PROMPT_TMPL = """\
 
 # append_to_readme の引数
 - week_label: "{week_label}"
-- week_path: "./articles/weekly/{year}-{week_file}.md"
+- week_path: "./articles/haiku_weekly/{year}-{week_file}.md"
 
 # update_index の引数（append_to_readme と同じ値を使用）
 - week_label: "{week_label}"
-- week_path: "./articles/weekly/{year}-{week_file}.md"
+- week_path: "./articles/haiku_weekly/{year}-{week_file}.md"
 
 # コミットメッセージ形式
 ```
