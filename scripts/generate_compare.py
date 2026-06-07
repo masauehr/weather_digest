@@ -10,13 +10,17 @@ generate_compare.py — Ollama記事とHaiku記事を並べた比較ページを
 """
 
 import argparse
+import os
 import subprocess
 import sys
 from datetime import datetime, timezone, timedelta
 from pathlib import Path
 
+import anthropic
+
 PROJECT_DIR = Path(__file__).resolve().parent.parent
 JST = timezone(timedelta(hours=9))
+SONNET_MODEL = "claude-sonnet-4-6"
 
 
 def log(msg: str) -> None:
@@ -24,7 +28,21 @@ def log(msg: str) -> None:
     print(f"[{ts}] {msg}", flush=True)
 
 
+def load_api_key() -> bool:
+    """~/.anthropic_env から ANTHROPIC_API_KEY を読み込む"""
+    if os.environ.get("ANTHROPIC_API_KEY"):
+        return True
+    env_file = Path.home() / ".anthropic_env"
+    if env_file.exists():
+        for line in env_file.read_text().splitlines():
+            if line.startswith("ANTHROPIC_API_KEY="):
+                os.environ["ANTHROPIC_API_KEY"] = line.split("=", 1)[1].strip()
+                return True
+    return False
+
+
 def strip_front_matter(content: str) -> str:
+    """Jekyll front matter（--- ... ---）を除去して本文を返す"""
     if content.startswith("---"):
         parts = content.split("---", 2)
         if len(parts) >= 3:
@@ -33,6 +51,7 @@ def strip_front_matter(content: str) -> str:
 
 
 def extract_li_items(md_path: Path, limit: int = 5) -> str:
+    """index.md から <li> エントリを最大 limit 件取得して文字列で返す"""
     if not md_path.exists():
         return ""
     lines = md_path.read_text(encoding="utf-8").split("\n")
@@ -41,11 +60,12 @@ def extract_li_items(md_path: Path, limit: int = 5) -> str:
 
 
 def insert_li_at_top_of_ul(md_path: Path, new_li: str) -> bool:
+    """<ul class="article-list"> の直後に new_li を挿入する（重複チェック付き）"""
     if not md_path.exists():
         return False
     content = md_path.read_text(encoding="utf-8")
     if new_li.strip() in content:
-        return False
+        return False  # 既に存在する場合はスキップ
     lines = content.split("\n")
     result = []
     inserted = False
@@ -59,16 +79,87 @@ def insert_li_at_top_of_ul(md_path: Path, new_li: str) -> bool:
     return inserted
 
 
+def evaluate_with_sonnet(week_label: str, ollama_content: str, haiku_content: str) -> str:
+    """Claude Sonnet で Ollama 記事と Haiku 記事を比較・評価する"""
+    if not load_api_key():
+        log("WARN: ANTHROPIC_API_KEY が未設定のため Sonnet 評価をスキップします")
+        return ""
+
+    log(f"Sonnet 評価を開始: {SONNET_MODEL}")
+    client = anthropic.Anthropic()
+
+    system_prompt = (
+        "あなたは気象・気候・防災ニュースの専門的な評価者です。\n"
+        "同じ週の気象ニュースについて、2つの異なるLLMモデルが生成した記事を比較・評価してください。\n\n"
+        "## 評価の観点\n"
+        "1. **情報の正確性・信頼性** — 気象庁など公的機関の情報が適切に引用されているか\n"
+        "2. **トピックのカバレッジ** — 重要な気象イベント・気候変動・防災情報を網羅しているか\n"
+        "3. **各モデルの独自性・強み** — 一方にしかない情報・視点は何か\n"
+        "4. **読みやすさ・構成** — 見出し・要約・情報の整理がわかりやすいか\n"
+        "5. **総合評価** — 今週はどちらがより有用な記事を書いたか、またその理由\n\n"
+        "マークダウン形式で記述してください。各項目は2〜3文程度に簡潔にまとめること。"
+    )
+
+    user_message = (
+        f"## 評価対象週: {week_label}\n\n"
+        "---\n\n"
+        "## 【Ollama / qwen3.6:35b-mlx の記事】\n\n"
+        f"{ollama_content[:4000]}\n\n"
+        "---\n\n"
+        "## 【Claude Haiku の記事】\n\n"
+        f"{haiku_content[:4000]}\n\n"
+        "---\n\n"
+        "上記2記事を評価してください。"
+    )
+
+    try:
+        response = client.messages.create(
+            model=SONNET_MODEL,
+            max_tokens=2048,
+            system=system_prompt,
+            messages=[{"role": "user", "content": user_message}],
+        )
+        evaluation = response.content[0].text
+        log("Sonnet 評価完了")
+        return evaluation
+    except Exception as e:
+        log(f"Sonnet 評価エラー: {e}")
+        return ""
+
+
+def _evaluation_html(evaluation: str) -> str:
+    """Sonnet 評価セクションの HTML を返す（評価がない場合は空文字）"""
+    if not evaluation:
+        return ""
+    return f"""
+<div class="evaluation-section">
+<div class="evaluation-header">
+  <span class="model-badge">🤖 Sonnet評価</span>
+  <span class="model-name">{SONNET_MODEL}</span>
+</div>
+<div class="evaluation-body" markdown="1">
+
+{evaluation}
+
+</div>
+</div>
+"""
+
+
 def update_top_page(
     week_label: str, week_file: str, year: str,
     ollama_content: str, haiku_content: str,
+    evaluation: str = "",
 ) -> None:
+    """index.md を最新比較コンテンツ + 過去記事グリッドで完全に書き換える"""
     compare_items = extract_li_items(PROJECT_DIR / "articles/compare/index.md")
     weekly_items  = extract_li_items(PROJECT_DIR / "articles/weekly/index.md")
     haiku_items   = extract_li_items(PROJECT_DIR / "articles/haiku_weekly/index.md")
     monthly_items = extract_li_items(PROJECT_DIR / "articles/monthly/index.md")
 
+    # Liquid の {{ }} は f-string と衝突するので {{ }} にエスケープ
     baseurl = "{{ site.baseurl }}"
+    eval_section = _evaluation_html(evaluation)
 
     index_md = f"""---
 layout: compare
@@ -113,7 +204,7 @@ title: 気象ニュースダイジェスト
 </div>
 
 </div>
-
+{eval_section}
 <div class="past-articles">
 <h2>📚 過去の記事</h2>
 <div class="past-articles-grid">
@@ -158,9 +249,9 @@ title: 気象ニュースダイジェスト
 
 
 def generate(week_file: str, week_label: str, year: str) -> bool:
-    ollama_path  = PROJECT_DIR / f"articles/weekly/{year}-{week_file}.md"
-    haiku_path   = PROJECT_DIR / f"articles/haiku_weekly/{year}-{week_file}.md"
-    compare_path = PROJECT_DIR / f"articles/compare/{year}-{week_file}.md"
+    ollama_path   = PROJECT_DIR / f"articles/weekly/{year}-{week_file}.md"
+    haiku_path    = PROJECT_DIR / f"articles/haiku_weekly/{year}-{week_file}.md"
+    compare_path  = PROJECT_DIR / f"articles/compare/{year}-{week_file}.md"
     compare_index = PROJECT_DIR / "articles/compare/index.md"
 
     if not ollama_path.exists():
@@ -172,6 +263,13 @@ def generate(week_file: str, week_label: str, year: str) -> bool:
 
     ollama_content = strip_front_matter(ollama_path.read_text(encoding="utf-8"))
     haiku_content  = strip_front_matter(haiku_path.read_text(encoding="utf-8"))
+
+    # Sonnet 評価（比較ページが未生成の場合のみ実行）
+    evaluation = ""
+    if not compare_path.exists():
+        evaluation = evaluate_with_sonnet(week_label, ollama_content, haiku_content)
+
+    eval_section = _evaluation_html(evaluation)
 
     # 比較ページ（articles/compare/YYYY-MMDD.md）を生成
     if not compare_path.exists():
@@ -218,7 +316,7 @@ title: モデル比較（{week_label}）
 </div>
 
 </div>
-"""
+{eval_section}"""
         compare_path.parent.mkdir(parents=True, exist_ok=True)
         compare_path.write_text(compare_md, encoding="utf-8")
         log(f"比較ページ生成完了: {compare_path}")
@@ -236,7 +334,7 @@ title: モデル比較（{week_label}）
         log("articles/compare/index.md 更新完了")
 
     # トップページを最新比較コンテンツで完全書き換え
-    update_top_page(week_label, week_file, year, ollama_content, haiku_content)
+    update_top_page(week_label, week_file, year, ollama_content, haiku_content, evaluation)
 
     # git commit & push
     files = [
@@ -262,7 +360,7 @@ title: モデル比較（{week_label}）
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Ollama vs Haiku 比較ページ生成")
+    parser = argparse.ArgumentParser(description="Ollama vs Haiku 比較ページ生成（Sonnet評価付き）")
     parser.add_argument("--week-file",  required=True, help="MMDD形式（例: 0602）")
     parser.add_argument("--week-label", required=True, help="例: 5/26〜6/1")
     parser.add_argument("--year",       required=True, help="例: 2026")
