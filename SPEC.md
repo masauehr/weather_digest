@@ -1,6 +1,6 @@
 # SPEC.md — 気象ニュース収集・記事生成仕様
 
-最終更新: 2026-05-31
+最終更新: 2026-06-07
 
 ---
 
@@ -238,14 +238,34 @@ YYYY年MM月の気象・気候分野の主要動向を要約（3〜5段落）。
 
 ```
 launchd（毎週日曜 08:00）
-  └─ run_weather.sh
-       ├─ 日付判定（第1月曜か否か）
-       ├─ claude CLI 起動
-       │    └─ CLAUDE.md の指示に従い記事生成
-       │         ├─ WebSearch で最新情報を収集
-       │         ├─ 記事ファイルを生成（Write）
-       │         └─ README.md のリンク一覧を更新（Edit）
-       └─ git add / commit / push
+  └─ run_weather_ollama.sh
+       ├─ 日付判定（第1日曜か否か）
+       ├─ local_agent.py（Ollama / qwen3.6:35b-mlx）を起動
+       │    ├─ search_web() で直近気象ニュースを検索
+       │    ├─ fetch_url() でページ取得
+       │    ├─ write_article() で週次記事を保存
+       │    ├─ append_to_readme() / update_index() で更新
+       │    └─ git_commit_push()
+       ├─ 第1日曜なら月次記事（articles/monthly/）も生成
+       └─ Haiku記事が揃っていれば generate_compare.py を呼び出し
+
+launchd（毎週日曜 12:00）
+  └─ run_weather_haiku.sh
+       ├─ 日付判定（第1日曜か否か）
+       ├─ haiku_agent.py（Claude Haiku / claude-haiku-4-5-20251001）を起動
+       │    ├─ search_web() / fetch_url() で情報収集
+       │    ├─ write_article() で articles/haiku_weekly/ に保存
+       │    ├─ append_to_readme() / update_index() で更新
+       │    └─ git_commit_push()
+       ├─ 第1日曜なら Haiku月次記事（articles/haiku_monthly/）も生成
+       └─ Ollama記事が揃っていれば generate_compare.py を呼び出し
+            ↓
+          generate_compare.py
+            ├─ Claude Sonnet（claude-sonnet-4-6）が両記事を評価
+            ├─ articles/compare/YYYY-MMDD.md を生成（Sonnet評価セクション付き）
+            ├─ articles/compare/index.md を更新
+            ├─ index.md をトップ比較ページとして書き換え
+            └─ git add / commit / push
 ```
 
 ---
