@@ -248,7 +248,7 @@ title: 気象ニュースダイジェスト
     log(f"index.md をトップ比較ページとして更新: {week_label}")
 
 
-def generate(week_file: str, week_label: str, year: str) -> bool:
+def generate(week_file: str, week_label: str, year: str, force: bool = False) -> bool:
     ollama_path   = PROJECT_DIR / f"articles/weekly/{year}-{week_file}.md"
     haiku_path    = PROJECT_DIR / f"articles/haiku_weekly/{year}-{week_file}.md"
     compare_path  = PROJECT_DIR / f"articles/compare/{year}-{week_file}.md"
@@ -264,15 +264,15 @@ def generate(week_file: str, week_label: str, year: str) -> bool:
     ollama_content = strip_front_matter(ollama_path.read_text(encoding="utf-8"))
     haiku_content  = strip_front_matter(haiku_path.read_text(encoding="utf-8"))
 
-    # Sonnet 評価（比較ページが未生成の場合のみ実行）
+    # Sonnet 評価（未生成 or --force 時に実行）
     evaluation = ""
-    if not compare_path.exists():
+    if not compare_path.exists() or force:
         evaluation = evaluate_with_sonnet(week_label, ollama_content, haiku_content)
 
     eval_section = _evaluation_html(evaluation)
 
     # 比較ページ（articles/compare/YYYY-MMDD.md）を生成
-    if not compare_path.exists():
+    if not compare_path.exists() or force:
         compare_md = f"""---
 layout: compare
 title: モデル比較（{week_label}）
@@ -321,7 +321,7 @@ title: モデル比較（{week_label}）
         compare_path.write_text(compare_md, encoding="utf-8")
         log(f"比較ページ生成完了: {compare_path}")
     else:
-        log(f"比較ページは既に存在します（スキップ）: {compare_path}")
+        log(f"比較ページは既に存在します（スキップ）: {compare_path} （--force で再生成可）")
 
     # articles/compare/index.md を更新
     date_str = f"{year}-{week_file[:2]}-{week_file[2:]}"
@@ -364,9 +364,10 @@ def main():
     parser.add_argument("--week-file",  required=True, help="MMDD形式（例: 0602）")
     parser.add_argument("--week-label", required=True, help="例: 5/26〜6/1")
     parser.add_argument("--year",       required=True, help="例: 2026")
+    parser.add_argument("--force",      action="store_true", help="既存の比較ページを Sonnet 評価付きで再生成する")
     args = parser.parse_args()
 
-    success = generate(args.week_file, args.week_label, args.year)
+    success = generate(args.week_file, args.week_label, args.year, force=args.force)
     sys.exit(0 if success else 1)
 
 
