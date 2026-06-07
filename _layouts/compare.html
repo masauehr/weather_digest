@@ -22,6 +22,9 @@
       --haiku-bg: #e3f2fd;
       --haiku-border: #42a5f5;
       --haiku-header: #1565c0;
+      --sonnet-bg: #f3e5f5;
+      --sonnet-border: #ab47bc;
+      --sonnet-header: #6a1b9a;
     }
 
     * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -95,8 +98,9 @@
       font-weight: 700;
       font-size: 0.82rem;
     }
-    .badge.ollama { background: var(--ollama-bg); color: var(--ollama-header); border: 1px solid var(--ollama-border); }
-    .badge.haiku  { background: var(--haiku-bg);  color: var(--haiku-header);  border: 1px solid var(--haiku-border); }
+    .badge.ollama  { background: var(--ollama-bg);  color: var(--ollama-header);  border: 1px solid var(--ollama-border); }
+    .badge.haiku   { background: var(--haiku-bg);   color: var(--haiku-header);   border: 1px solid var(--haiku-border); }
+    .badge.sonnet  { background: var(--sonnet-bg);  color: var(--sonnet-header);  border: 1px solid var(--sonnet-border); }
 
     /* 2カラム比較レイアウト */
     .compare-wrapper {
@@ -153,6 +157,40 @@
     .panel-body th { background: var(--primary); color: white; padding: 0.5rem 0.8rem; text-align: left; }
     .panel-body td { border: 1px solid var(--border); padding: 0.45rem 0.8rem; }
     .panel-body tr:nth-child(even) td { background: #f0f7ff; }
+
+    /* Sonnet 評価セクション */
+    .evaluation-section {
+      background: var(--surface);
+      border: 2px solid var(--sonnet-border);
+      border-radius: 10px;
+      overflow: hidden;
+      margin-bottom: 2rem;
+    }
+    .evaluation-header {
+      display: flex;
+      align-items: center;
+      gap: 0.6rem;
+      padding: 0.6rem 1rem;
+      background: var(--sonnet-header);
+      color: white;
+      font-size: 0.88rem;
+      font-weight: 700;
+    }
+    .evaluation-body {
+      padding: 1.2rem 1.4rem;
+    }
+    .evaluation-body h2 { font-size: 1.05rem; font-weight: 700; color: var(--sonnet-header); margin: 1.4rem 0 0.5rem; padding-left: 0.6rem; border-left: 3px solid var(--sonnet-border); }
+    .evaluation-body h3 { font-size: 0.95rem; font-weight: 700; margin: 1rem 0 0.4rem; color: var(--accent); }
+    .evaluation-body p  { margin-bottom: 0.7rem; font-size: 0.92rem; }
+    .evaluation-body ul, .evaluation-body ol { padding-left: 1.4rem; margin-bottom: 0.7rem; font-size: 0.92rem; }
+    .evaluation-body li { margin-bottom: 0.25rem; }
+    .evaluation-body strong { font-weight: 700; color: var(--sonnet-header); }
+    .evaluation-body a  { color: var(--link); text-decoration: none; }
+    .evaluation-body a:hover { text-decoration: underline; }
+    .evaluation-body table { border-collapse: collapse; width: 100%; margin: 0.8rem 0; font-size: 0.88rem; }
+    .evaluation-body th { background: var(--sonnet-header); color: white; padding: 0.4rem 0.8rem; text-align: left; }
+    .evaluation-body td { border: 1px solid var(--sonnet-border); padding: 0.4rem 0.8rem; }
+    .evaluation-body tr:nth-child(even) td { background: var(--sonnet-bg); }
 
     /* 過去記事グリッド */
     .past-articles { margin-top: 2rem; }
@@ -220,7 +258,7 @@
   <footer>
     <p>
       自動生成 by <a href="https://github.com/masauehr/weather_digest" target="_blank" rel="noopener">masauehr/weather_digest</a>
-      &nbsp;|&nbsp; Ollama（qwen3.6:35b-mlx） vs Claude Haiku
+      &nbsp;|&nbsp; Ollama（qwen3.6:35b-mlx） vs Claude Haiku &nbsp;|&nbsp; 評価: Claude Sonnet
     </p>
   </footer>
 </body>
