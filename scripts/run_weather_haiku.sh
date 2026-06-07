@@ -58,40 +58,71 @@ if [ -f "${HAIKU_WEEKLY_FILE}" ]; then
 fi
 
 log "=== weather_digest Haiku 自動実行開始 ==="
-MODE="weekly"
-log "モード: ${MODE}"
 
-MAX_RETRY=2
-RETRY=0
-SUCCESS=false
+# --- モード判定（第1週 = 月次も生成）---
+if [ "${DAY_OF_MONTH}" -le 7 ]; then
+  MODE="monthly"
+  log "モード: monthly（第1日曜 → 月次まとめも生成）"
+else
+  MODE="weekly"
+  log "モード: weekly"
+fi
 
-while [ ${RETRY} -lt ${MAX_RETRY} ]; do
-  RETRY=$((RETRY + 1))
-  log "Haikuエージェントを起動します... model=${HAIKU_MODEL} (試行 ${RETRY}/${MAX_RETRY})"
+MONTH=$(TZ=Asia/Tokyo date +%m)
+HAIKU_MONTHLY_FILE="${PROJECT_DIR}/articles/haiku_monthly/${YEAR}-${MONTH}.md"
 
-  if "${PYTHON_BIN}" "${PROJECT_DIR}/scripts/haiku_agent.py" \
-      --mode "${MODE}" \
-      --week-file "${WEEK_FILE_MMDD}" \
-      --week-label "${WEEK_LABEL}" \
-      --year "${YEAR}" \
-      --month "$(TZ=Asia/Tokyo date +%m)" \
-      --model "${HAIKU_MODEL}" \
-      2>&1 | tee -a "${LOG_FILE}"; then
-    SUCCESS=true
-    break
-  else
-    EXIT_CODE=$?
-    log "Haikuエージェントが終了コード ${EXIT_CODE} で失敗しました。"
-    if [ ${RETRY} -lt ${MAX_RETRY} ]; then
-      log "30秒後にリトライします..."
-      sleep 30
+# --- 共通: エージェント実行関数（リトライ付き）---
+run_haiku_agent() {
+  local _mode="$1"
+  local _max_retry=2
+  local _retry=0
+  local _success=false
+
+  while [ ${_retry} -lt ${_max_retry} ]; do
+    _retry=$((_retry + 1))
+    log "Haikuエージェントを起動します... mode=${_mode} model=${HAIKU_MODEL} (試行 ${_retry}/${_max_retry})"
+
+    if "${PYTHON_BIN}" "${PROJECT_DIR}/scripts/haiku_agent.py" \
+        --mode "${_mode}" \
+        --week-file "${WEEK_FILE_MMDD}" \
+        --week-label "${WEEK_LABEL}" \
+        --year "${YEAR}" \
+        --month "${MONTH}" \
+        --model "${HAIKU_MODEL}" \
+        2>&1 | tee -a "${LOG_FILE}"; then
+      _success=true
+      break
+    else
+      EXIT_CODE=$?
+      log "Haikuエージェントが終了コード ${EXIT_CODE} で失敗しました。"
+      if [ ${_retry} -lt ${_max_retry} ]; then
+        log "30秒後にリトライします..."
+        sleep 30
+      fi
     fi
-  fi
-done
+  done
 
-if [ "${SUCCESS}" = false ]; then
-  log "ERROR: ${MAX_RETRY}回試行しましたがすべて失敗しました。"
-  exit 1
+  if [ "${_success}" = false ]; then
+    log "ERROR: ${_max_retry}回試行しましたがすべて失敗しました（mode=${_mode}）。手動確認が必要です。"
+    return 1
+  fi
+  return 0
+}
+
+# --- 週次記事生成（常に実行）---
+log "=== Haiku 週次記事生成開始 ==="
+run_haiku_agent "weekly" || exit 1
+log "=== Haiku 週次記事生成完了 ==="
+
+# --- 月次記事生成（第1週のみ）---
+if [ "${MODE}" = "monthly" ]; then
+  if [ -f "${HAIKU_MONTHLY_FILE}" ]; then
+    log "Haiku 月次記事（${YEAR}-${MONTH}）は実行済み。スキップします。"
+  else
+    log "=== Haiku 月次記事生成開始 ==="
+    run_haiku_agent "monthly" || log "WARN: 月次記事生成に失敗しました（手動で実行してください）"
+    log "=== Haiku 月次記事生成完了 ==="
+  fi
 fi
 
 log "=== Haiku 記事生成完了 ==="

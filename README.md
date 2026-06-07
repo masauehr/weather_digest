@@ -12,7 +12,8 @@
 | 🖥️ Ollama週次まとめ | https://masauehr.github.io/weather_digest/articles/weekly/ |
 | ⚡ Haiku週次まとめ | https://masauehr.github.io/weather_digest/articles/haiku_weekly/ |
 | 🔬 モデル比較 | https://masauehr.github.io/weather_digest/articles/compare/ |
-| 📅 月次まとめ一覧 | https://masauehr.github.io/weather_digest/articles/monthly/ |
+| 📅 Ollama月次まとめ | https://masauehr.github.io/weather_digest/articles/monthly/ |
+| 📅 Haiku月次まとめ | https://masauehr.github.io/weather_digest/articles/haiku_monthly/ |
 | ⚙️ 収集・生成仕様 | [SPEC.md](./SPEC.md) |
 
 ---
@@ -33,7 +34,8 @@ weather_digest/
 │   ├── weekly/YYYY-MMDD.md                   # Ollama 週次記事（日曜 08:00 自動生成）
 │   ├── haiku_weekly/YYYY-MMDD.md             # Haiku 週次記事（日曜 12:00 自動生成）
 │   ├── compare/YYYY-MMDD.md                  # モデル比較ページ（12:00以降 自動生成）
-│   ├── monthly/YYYY-MM.md                    # 月次まとめ（第1日曜 自動生成）
+│   ├── monthly/YYYY-MM.md                    # Ollama 月次まとめ（第1日曜 08:00 自動生成）
+│   ├── haiku_monthly/YYYY-MM.md              # Haiku 月次まとめ（第1日曜 12:00 自動生成）
 │   └── topics/YYYY-MM-DD_slug.md             # 深掘りトピックス
 └── scripts/
     ├── local_agent.py                         # Ollama エージェント
@@ -60,6 +62,10 @@ weather_digest/
 - [5/31〜6/7](./articles/haiku_weekly/2026-0607.md)
 - [5/24〜5/31](./articles/haiku_weekly/2026-0531.md)
 
+### Haiku月次まとめ（Claude Haiku）
+
+<!-- articles/haiku_monthly/ のファイルへのリンクがここに追加される -->
+
 ### モデル比較（Ollama vs Haiku）
 
 <!-- 比較記事リンクがここに追加されます -->
@@ -83,7 +89,8 @@ weather_digest/
 |---|---|
 | 毎週日曜 08:00 JST | Ollama（qwen）が週次記事を自動生成・git push |
 | 毎週日曜 12:00 JST | Claude Haiku が同じ週の記事を別ファイルに生成 → 比較ページを自動作成 |
-| 毎月第1日曜 08:00 JST | 上記に加えて月次まとめも生成 |
+| 毎月第1日曜 08:00 JST | 上記に加えて Ollama 月次まとめも生成 |
+| 毎月第1日曜 12:00 JST | 上記に加えて Haiku 月次まとめも生成 |
 
 ### 使用モデル
 
