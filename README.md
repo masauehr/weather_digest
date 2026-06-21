@@ -53,6 +53,7 @@ weather_digest/
 
 ### 週次まとめ（Ollama / qwen）
 
+- [6/14〜6/21](./articles/weekly/2026-0621.md)
 - [6/7〜6/14](./articles/weekly/2026-0614.md)
 - [5/31〜6/7](./articles/weekly/2026-0607.md)
 - [5/24〜5/31](./articles/weekly/2026-0531.md)
