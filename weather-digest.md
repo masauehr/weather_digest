@@ -7,7 +7,7 @@ Markdown記事としてGitHubに公開する自動化システム。
 
 ## 概要
 
-macOS の launchd から Ollama（ローカルLLM）と Claude Haiku（Anthropic API）を呼び出し、
+macOS の launchd から Ollama（ローカルLLM）と Claude Haiku（Claude Code CLI 経由）を呼び出し、
 情報収集 → 記事生成 → git push までを自動化する。  
 同じ週のニュースを2モデルで記事化し、Claude Sonnet が評価付き2カラム比較ページを自動生成する。
 
@@ -15,13 +15,14 @@ macOS の launchd から Ollama（ローカルLLM）と Claude Haiku（Anthropic
 |---|---|---|
 | 毎週日曜 08:00 | Ollama（qwen3.6:35b-mlx） | 直近7日間の気象ニュースを収集 → 週次記事を生成・push |
 | 毎月第1日曜 08:00 | Ollama | 週次記事に加えて月次まとめ記事も生成・push |
-| 毎週日曜 12:00 | Claude Haiku（Anthropic API） | 同じ週の記事を別ファイルに生成・push |
+| 毎週日曜 12:00 | Claude Haiku（Claude Code CLI） | 同じ週の記事を別ファイルに生成・push |
 | 毎月第1日曜 12:00 | Claude Haiku | 週次記事に加えて Haiku 月次まとめ記事も生成・push |
-| 12:00 以降（Haiku完了後） | Claude Sonnet | 両記事を読んで評価 → 評価付き比較ページを生成・push |
+| 12:00 以降（Haiku完了後） | Claude Sonnet（Claude Code CLI） | 両記事を読んで評価 → 評価付き比較ページを生成・push |
 
 > **変更履歴**
 > - 2026-05-31: プロジェクト新規作成
 > - 2026-06-07: Haiku月次まとめ機能追加、Sonnet評価を比較ページに追加、`--force` オプション追加
+> - 2026-07-25: Haiku・Sonnet評価を Anthropic API から Claude Code CLI（Pro/Maxサブスクリプション経由）に変更。APIクレジット残高切れによる自動実行停止を解消（ai_news プロジェクトと同じ方式）。ANTHROPIC_API_KEY が不要に
 
 ---
 
@@ -75,12 +76,14 @@ run_weather_haiku.sh が起動
   ↓
 Haiku記事（articles/haiku_weekly/YYYY-MMDD.md）が存在する？
   ├─ Yes → スキップ（Ollama記事があれば比較ページのみ生成して終了）
-  └─ No  → haiku_agent.py を起動（Anthropic API エージェント、mode=weekly）
+  └─ No  → haiku_agent.py を起動（mode=weekly）
               ↓
-            ┌─ search_web()        DuckDuckGo で直近気象ニュースを検索
-            ├─ fetch_url()         trafilatura / requests でページ取得
-            ├─ write_article()     articles/haiku_weekly/ に記事を保存
-            ├─ append_to_readme()  README.md の Haiku 週次セクションにリンク追加
+            Claude Code CLI（Pro/Maxサブスクリプション、ANTHROPIC_API_KEYは明示的に除去）を
+            subprocess 起動し、WebSearch/WebFetch/Write/Read のみ許可した状態で
+            articles/haiku_weekly/ に記事を1本だけ書かせる
+              ↓
+            CLI終了後、haiku_agent.py（Python側）が決定論的に後処理:
+            ┌─ append_to_readme()  README.md の Haiku 週次セクションにリンク追加
             ├─ update_index()      index.md の Haiku 週次セクションを更新
             └─ git_commit_push()   git add / commit / push
               ↓
@@ -214,8 +217,8 @@ tail -f ~/projects/weather_digest/weather_digest_haiku.log  # Haiku
 | 役割 | モデル | 種別 |
 |---|---|---|
 | 週次・月次記事生成（08:00） | `qwen3.6:35b-mlx` | Ollama ローカルLLM |
-| 週次・月次記事生成（12:00） | `claude-haiku-4-5-20251001` | Anthropic API（Claude Haiku）|
-| 比較ページ評価 | `claude-sonnet-4-6` | Anthropic API（Claude Sonnet）|
+| 週次・月次記事生成（12:00） | `haiku`（Claude Haiku 4.5） | Claude Code CLI（Pro/Maxサブスクリプション）|
+| 比較ページ評価 | `sonnet`（Claude Sonnet 4.6） | Claude Code CLI（Pro/Maxサブスクリプション）|
 
 Ollama モデルの変更（一時的）:
 
@@ -242,7 +245,7 @@ Jekyll テーマ: カスタム（`_layouts/default.html`・`_layouts/compare.htm
 
 ## Sonnet評価の仕様
 
-比較ページ生成時（`generate_compare.py`）に `claude-sonnet-4-6` が自動実行される。
+比較ページ生成時（`generate_compare.py`）に Claude Sonnet（Claude Code CLI経由、`--model sonnet`）が自動実行される。
 
 ### 評価の観点
 
@@ -259,7 +262,6 @@ Jekyll テーマ: カスタム（`_layouts/default.html`・`_layouts/compare.htm
 比較ページが既に存在する場合は `--force` を付けて再生成する:
 
 ```bash
-source ~/.anthropic_env
 python3 ~/projects/weather_digest/scripts/generate_compare.py \
   --week-file MMDD --week-label "M/D〜M/D" --year YYYY --force
 ```
@@ -275,12 +277,17 @@ ollama serve  # 起動
 curl http://localhost:11434/api/tags  # 疎通確認
 ```
 
-### ANTHROPIC_API_KEY エラー
+### Claude Code CLI が見つからない / 失敗する
 
 ```bash
-# ~/.anthropic_env に以下を記載
-ANTHROPIC_API_KEY=sk-ant-...
+# CLI の存在確認
+ls -la ~/.local/bin/claude
+
+# サブスクリプション認証状態の確認（ログイン画面が出る場合は再ログイン）
+claude --print --model haiku "こんにちは"
 ```
+
+`--max-budget-usd` の上限に達すると失敗するため、ログに `budget` 関連のエラーが出ていないか確認する。
 
 ### 記事が生成されない（最大ターン数到達）
 
@@ -305,7 +312,6 @@ python3 ~/projects/weather_digest/scripts/generate_compare.py \
 ### Sonnet評価だけ再実行したい
 
 ```bash
-source ~/.anthropic_env
 python3 ~/projects/weather_digest/scripts/generate_compare.py \
   --week-file MMDD --week-label "M/D〜M/D" --year YYYY --force
 ```
