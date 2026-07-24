@@ -2,6 +2,11 @@
 """
 generate_compare.py — Ollama記事とHaiku記事を並べた比較ページを生成する
 
+【2026-07-25 変更】
+Sonnet評価は Anthropic API 直叩き（anthropic.Anthropic()）ではなく、
+ai_news プロジェクトと同じ Claude Code CLI（Pro/Maxサブスクリプション）経由に変更した。
+API クレジット残高には依存せず、ANTHROPIC_API_KEY も不要になった。
+
 使い方:
   python3 generate_compare.py \
     --week-file 0602 \
@@ -16,11 +21,10 @@ import sys
 from datetime import datetime, timezone, timedelta
 from pathlib import Path
 
-import anthropic
-
 PROJECT_DIR = Path(__file__).resolve().parent.parent
 JST = timezone(timedelta(hours=9))
 SONNET_MODEL = "claude-sonnet-4-6"
+CLAUDE_BIN = str(Path.home() / ".local" / "bin" / "claude")
 
 
 def log(msg: str) -> None:
@@ -28,17 +32,29 @@ def log(msg: str) -> None:
     print(f"[{ts}] {msg}", flush=True)
 
 
-def load_api_key() -> bool:
-    """~/.anthropic_env から ANTHROPIC_API_KEY を読み込む"""
-    if os.environ.get("ANTHROPIC_API_KEY"):
-        return True
-    env_file = Path.home() / ".anthropic_env"
-    if env_file.exists():
-        for line in env_file.read_text().splitlines():
-            if line.startswith("ANTHROPIC_API_KEY="):
-                os.environ["ANTHROPIC_API_KEY"] = line.split("=", 1)[1].strip()
-                return True
-    return False
+def run_claude_cli_text(prompt: str, model: str = "sonnet", budget_usd: str = "1.00", timeout_sec: int = 600) -> str:
+    """Claude Code CLI（Pro/Maxサブスクリプション）にプロンプトを渡し、応答テキストを返す。
+    ANTHROPIC_API_KEY は明示的に除去し、APIクレジットではなくサブスク認証を強制する。"""
+    env = os.environ.copy()
+    env.pop("ANTHROPIC_API_KEY", None)
+    env.pop("ANTHROPIC_BASE_URL", None)
+
+    cmd = [
+        CLAUDE_BIN,
+        "--print",
+        "--dangerously-skip-permissions",
+        "--model", model,
+        "--max-budget-usd", budget_usd,
+        "--allowedTools", "",
+        "--input-format", "text",
+    ]
+    result = subprocess.run(
+        cmd, input=prompt, text=True, cwd=PROJECT_DIR, env=env,
+        capture_output=True, timeout=timeout_sec,
+    )
+    if result.returncode != 0:
+        raise RuntimeError(f"Claude Code CLI が終了コード {result.returncode} で失敗: {result.stderr[:500]}")
+    return result.stdout.strip()
 
 
 def strip_front_matter(content: str) -> str:
@@ -80,15 +96,10 @@ def insert_li_at_top_of_ul(md_path: Path, new_li: str) -> bool:
 
 
 def evaluate_with_sonnet(week_label: str, ollama_content: str, haiku_content: str) -> str:
-    """Claude Sonnet で Ollama 記事と Haiku 記事を比較・評価する"""
-    if not load_api_key():
-        log("WARN: ANTHROPIC_API_KEY が未設定のため Sonnet 評価をスキップします")
-        return ""
+    """Claude Sonnet（Claude Code CLI経由）で Ollama 記事と Haiku 記事を比較・評価する"""
+    log(f"Sonnet 評価を開始（Claude Code CLI方式）: {SONNET_MODEL}")
 
-    log(f"Sonnet 評価を開始: {SONNET_MODEL}")
-    client = anthropic.Anthropic()
-
-    system_prompt = (
+    prompt = (
         "あなたは気象・気候・防災ニュースの専門的な評価者です。\n"
         "同じ週の気象ニュースについて、2つの異なるLLMモデルが生成した記事を比較・評価してください。\n\n"
         "## 評価の観点\n"
@@ -97,10 +108,7 @@ def evaluate_with_sonnet(week_label: str, ollama_content: str, haiku_content: st
         "3. **各モデルの独自性・強み** — 一方にしかない情報・視点は何か\n"
         "4. **読みやすさ・構成** — 見出し・要約・情報の整理がわかりやすいか\n"
         "5. **総合評価** — 今週はどちらがより有用な記事を書いたか、またその理由\n\n"
-        "マークダウン形式で記述してください。各項目は2〜3文程度に簡潔にまとめること。"
-    )
-
-    user_message = (
+        "マークダウン形式で記述してください。各項目は2〜3文程度に簡潔にまとめること。\n\n"
         f"## 評価対象週: {week_label}\n\n"
         "---\n\n"
         "## 【Ollama / qwen3.6:35b-mlx の記事】\n\n"
@@ -113,13 +121,7 @@ def evaluate_with_sonnet(week_label: str, ollama_content: str, haiku_content: st
     )
 
     try:
-        response = client.messages.create(
-            model=SONNET_MODEL,
-            max_tokens=2048,
-            system=system_prompt,
-            messages=[{"role": "user", "content": user_message}],
-        )
-        evaluation = response.content[0].text
+        evaluation = run_claude_cli_text(prompt, model="sonnet", budget_usd="1.00")
         log("Sonnet 評価完了")
         return evaluation
     except Exception as e:

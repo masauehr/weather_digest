@@ -1,13 +1,19 @@
 #!/bin/bash
 # run_weather_haiku.sh — Claude Haiku による気象ニュース週次まとめ 自動実行スクリプト
 # launchd から毎週日曜 12:00 に呼び出される（Ollama版の08:00より4時間後）。
+#
+# 【2026-07-25 変更】Anthropic API（従量課金クレジット）ではなく、
+# Claude Code CLI（Pro/Maxサブスクリプション）経由で実行するように変更した。
+# ai_news プロジェクトと同じ方式。ANTHROPIC_API_KEY は使わない
+# （設定されていても haiku_agent.py / generate_compare.py 側で明示的に除去する）。
 
 set -euo pipefail
 
 PROJECT_DIR="/Users/masahiro/projects/weather_digest"
 LOG_FILE="${PROJECT_DIR}/weather_digest_haiku.log"
 PYTHON_BIN="/opt/anaconda3/bin/python3"
-HAIKU_MODEL="${HAIKU_MODEL:-claude-haiku-4-5-20251001}"
+CLAUDE_BIN="${HOME}/.local/bin/claude"
+HAIKU_MODEL="${HAIKU_MODEL:-haiku}"
 TODAY=$(TZ=Asia/Tokyo date +%Y-%m-%d)
 DAY_OF_MONTH=$(TZ=Asia/Tokyo date +%d)
 YEAR=$(TZ=Asia/Tokyo date +%Y)
@@ -21,20 +27,14 @@ log() {
   echo "[$(TZ=Asia/Tokyo date '+%Y-%m-%d %H:%M:%S')] $1" | tee -a "${LOG_FILE}"
 }
 
-# ANTHROPIC_API_KEY の読み込み
-if [ -z "${ANTHROPIC_API_KEY:-}" ]; then
-  if [ -f "${HOME}/.anthropic_env" ]; then
-    # shellcheck disable=SC1090
-    source "${HOME}/.anthropic_env"
-    log "ANTHROPIC_API_KEY を ~/.anthropic_env から読み込みました"
-  fi
-fi
-
-if [ -z "${ANTHROPIC_API_KEY:-}" ]; then
-  log "ERROR: ANTHROPIC_API_KEY が設定されていません"
+# --- Claude Code CLI の存在確認（サブスクリプション認証。APIキーは使わない）---
+if [ ! -x "${CLAUDE_BIN}" ]; then
+  log "ERROR: Claude Code CLI が見つかりません: ${CLAUDE_BIN}"
   exit 1
 fi
-export ANTHROPIC_API_KEY
+# ANTHROPIC_API_KEY が環境に残っているとAPIクレジット課金経路に戻ってしまうため、
+# このプロセス内では明示的に外す（haiku_agent.py / generate_compare.py 側でも二重に除去する）
+unset ANTHROPIC_API_KEY || true
 
 log "=== weather_digest Haiku 起動チェック ==="
 log "今日: ${TODAY} / ファイル: ${YEAR}-${WEEK_FILE_MMDD} / 対象期間: ${WEEK_LABEL}"
