@@ -23,6 +23,8 @@ macOS の launchd から Ollama（ローカルLLM）と Claude Haiku（Claude Co
 > - 2026-05-31: プロジェクト新規作成
 > - 2026-06-07: Haiku月次まとめ機能追加、Sonnet評価を比較ページに追加、`--force` オプション追加
 > - 2026-07-25: Haiku・Sonnet評価を Anthropic API から Claude Code CLI（Pro/Maxサブスクリプション経由）に変更。APIクレジット残高切れによる自動実行停止を解消（ai_news プロジェクトと同じ方式）。ANTHROPIC_API_KEY が不要に
+>   - 経緯: 2026-07-19（日）12:00 の自動実行が `anthropic.BadRequestError`（`Your credit balance is too low`）で2回リトライとも失敗し、Haiku週次記事・比較ページが未生成のまま放置されていた（Ollama版は正常終了）
+>   - 対応: 上記方式変更後、2026-07-25 に `articles/haiku_weekly/2026-0719.md`（commit `fc2c7b2`）と `articles/compare/2026-0719.md`（commit `0a9e67c`）を手動バックフィル生成し、以降の自動実行も新方式に統一した
 
 ---
 
