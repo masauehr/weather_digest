@@ -6,6 +6,7 @@ title: モデル比較一覧
 # モデル比較一覧（Ollama vs Claude Haiku）
 
 <ul class="article-list">
+  <li><a href="{{ site.baseurl }}/articles/compare/2026-0726">7/19〜7/26</a><span class="date">2026-07-26</span></li>
   <li><a href="{{ site.baseurl }}/articles/compare/2026-0719">7/12〜7/19</a><span class="date">2026-07-19</span></li>
   <li><a href="{{ site.baseurl }}/articles/compare/2026-0628">6/21〜6/28</a><span class="date">2026-06-28</span></li>
   <li><a href="{{ site.baseurl }}/articles/compare/2026-0621">6/14〜6/21</a><span class="date">2026-06-21</span></li>
