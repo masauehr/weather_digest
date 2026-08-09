@@ -68,6 +68,7 @@ weather_digest/
 
 ### Haiku週次まとめ（Claude Haiku）
 
+- [8/2〜8/9](./articles/haiku_weekly/2026-0809.md)
 - [7/19〜7/26](./articles/haiku_weekly/2026-0726.md)
 - [7/12〜7/19](./articles/haiku_weekly/2026-0719.md)
 - [6/21〜6/28](./articles/haiku_weekly/2026-0628.md)
