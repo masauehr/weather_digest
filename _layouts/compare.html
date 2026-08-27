@@ -22,6 +22,12 @@
       --haiku-bg: #e3f2fd;
       --haiku-border: #42a5f5;
       --haiku-header: #1565c0;
+      --ornith-bg: #fff3e0;
+      --ornith-border: #ffa726;
+      --ornith-header: #e65100;
+      --nemotron-bg: #e0f2f1;
+      --nemotron-border: #26a69a;
+      --nemotron-header: #00695c;
       --sonnet-bg: #f3e5f5;
       --sonnet-border: #ab47bc;
       --sonnet-header: #6a1b9a;
@@ -98,14 +104,16 @@
       font-weight: 700;
       font-size: 0.82rem;
     }
-    .badge.ollama  { background: var(--ollama-bg);  color: var(--ollama-header);  border: 1px solid var(--ollama-border); }
-    .badge.haiku   { background: var(--haiku-bg);   color: var(--haiku-header);   border: 1px solid var(--haiku-border); }
-    .badge.sonnet  { background: var(--sonnet-bg);  color: var(--sonnet-header);  border: 1px solid var(--sonnet-border); }
+    .badge.ollama   { background: var(--ollama-bg);   color: var(--ollama-header);   border: 1px solid var(--ollama-border); }
+    .badge.haiku    { background: var(--haiku-bg);    color: var(--haiku-header);    border: 1px solid var(--haiku-border); }
+    .badge.ornith   { background: var(--ornith-bg);   color: var(--ornith-header);   border: 1px solid var(--ornith-border); }
+    .badge.nemotron { background: var(--nemotron-bg); color: var(--nemotron-header); border: 1px solid var(--nemotron-border); }
+    .badge.sonnet   { background: var(--sonnet-bg);   color: var(--sonnet-header);   border: 1px solid var(--sonnet-border); }
 
-    /* 2カラム比較レイアウト */
+    /* 比較レイアウト（2カラム。パネルが4枚なら 2×2 に折り返す） */
     .compare-wrapper {
       display: grid;
-      grid-template-columns: 1fr 1fr;
+      grid-template-columns: repeat(2, 1fr);
       gap: 1.2rem;
       margin-bottom: 2rem;
     }
@@ -116,8 +124,10 @@
       border: 2px solid;
       background: var(--surface);
     }
-    .compare-panel.ollama-panel { border-color: var(--ollama-border); }
-    .compare-panel.haiku-panel  { border-color: var(--haiku-border); }
+    .compare-panel.ollama-panel   { border-color: var(--ollama-border); }
+    .compare-panel.haiku-panel    { border-color: var(--haiku-border); }
+    .compare-panel.ornith-panel   { border-color: var(--ornith-border); }
+    .compare-panel.nemotron-panel { border-color: var(--nemotron-border); }
 
     .panel-header-bar {
       display: flex;
@@ -127,8 +137,10 @@
       font-size: 0.88rem;
       font-weight: 700;
     }
-    .ollama-panel .panel-header-bar { background: var(--ollama-header); color: white; }
-    .haiku-panel  .panel-header-bar { background: var(--haiku-header);  color: white; }
+    .ollama-panel   .panel-header-bar { background: var(--ollama-header);   color: white; }
+    .haiku-panel    .panel-header-bar { background: var(--haiku-header);    color: white; }
+    .ornith-panel   .panel-header-bar { background: var(--ornith-header);   color: white; }
+    .nemotron-panel .panel-header-bar { background: var(--nemotron-header); color: white; }
 
     .model-badge { font-size: 1rem; }
     .model-name  { font-family: monospace; font-size: 0.82rem; opacity: 0.85; }
@@ -195,7 +207,7 @@
     /* 過去記事グリッド */
     .past-articles { margin-top: 2rem; }
     .past-articles h2 { font-size: 1.2rem; font-weight: 700; color: var(--primary); border-bottom: 2px solid var(--border); padding-bottom: 0.4rem; margin-bottom: 1rem; }
-    .past-articles-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 1rem; }
+    .past-articles-grid { display: grid; grid-template-columns: repeat(6, 1fr); gap: 1rem; }
     .past-col h3 { font-size: 0.95rem; font-weight: 700; color: var(--accent); margin-bottom: 0.5rem; }
     .article-list { list-style: none; padding: 0; display: grid; gap: 0.4rem; }
     .article-list.compact li { padding: 0.4rem 0.8rem; }
@@ -223,6 +235,9 @@
     }
     footer a { color: var(--link); text-decoration: none; }
 
+    @media (max-width: 1100px) {
+      .past-articles-grid { grid-template-columns: repeat(3, 1fr); }
+    }
     @media (max-width: 900px) {
       .compare-wrapper { grid-template-columns: 1fr; }
       .past-articles-grid { grid-template-columns: repeat(2, 1fr); }
@@ -245,7 +260,9 @@
   </header>
   <nav>
     <a href="{{ site.baseurl }}/">ホーム</a>
-    <a href="{{ site.baseurl }}/articles/weekly/">Ollama週次</a>
+    <a href="{{ site.baseurl }}/articles/weekly/">qwen週次</a>
+    <a href="{{ site.baseurl }}/articles/ornith_weekly/">ornith週次</a>
+    <a href="{{ site.baseurl }}/articles/nemotron_weekly/">nemotron週次</a>
     <a href="{{ site.baseurl }}/articles/haiku_weekly/">Haiku週次</a>
     <a href="{{ site.baseurl }}/articles/compare/">モデル比較</a>
     <a href="{{ site.baseurl }}/articles/monthly/">月次まとめ</a>
@@ -258,7 +275,7 @@
   <footer>
     <p>
       自動生成 by <a href="https://github.com/masauehr/weather_digest" target="_blank" rel="noopener">masauehr/weather_digest</a>
-      &nbsp;|&nbsp; Ollama（qwen3.6:35b-mlx） vs Claude Haiku &nbsp;|&nbsp; 評価: Claude Sonnet
+      &nbsp;|&nbsp; qwen3.6:35b-mlx / ornith-1.5:35b / nemotron-3.5-lightning:30b-mlx / Claude Haiku &nbsp;|&nbsp; 評価: Claude Sonnet
     </p>
   </footer>
 </body>

@@ -30,6 +30,35 @@ OLLAMA_BASE = "http://localhost:11434"
 JST = timezone(timedelta(hours=9))
 DEFAULT_MODEL = "qwen3.6:35b-mlx"
 
+# ------------------------------------------------------------------ #
+# 比較エンジン定義
+#   primary=True  … qwen。README・トップ index.md まで更新する（従来どおり）
+#   primary=False … 比較用の追加ローカルLLM。自分の記事とアーカイブ一覧だけを
+#                    更新し、README・トップ index.md には触れない
+#                    （トップ index.md は generate_compare.py が毎回再生成する）
+# ------------------------------------------------------------------ #
+
+ENGINES = {
+    "qwen": {
+        "weekly_dir": "articles/weekly",
+        "monthly_dir": "articles/monthly",
+        "primary": True,
+    },
+    "ornith": {
+        "weekly_dir": "articles/ornith_weekly",
+        "monthly_dir": "articles/ornith_monthly",
+        "primary": False,
+    },
+    "nemotron": {
+        "weekly_dir": "articles/nemotron_weekly",
+        "monthly_dir": "articles/nemotron_monthly",
+        "primary": False,
+    },
+}
+
+# 実行中のエンジン設定（main() で --slug に応じて差し替える）
+ENGINE = {**ENGINES["qwen"], "slug": "qwen"}
+
 HEADERS = {
     "User-Agent": (
         "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) "
@@ -220,6 +249,12 @@ def tool_append_to_readme(
     week_label: str, week_path: str,
     month_label: str = None, month_path: str = None,
 ) -> str:
+    if not ENGINE["primary"]:
+        log(f"append_to_readme: secondary エンジン（{ENGINE['slug']}）のためスキップ")
+        return (
+            "スキップ: このエンジンは README を更新しません。"
+            "続けて update_index → git_commit_push を実行してください。"
+        )
     readme = PROJECT_DIR / "README.md"
     lines = readme.read_text(encoding="utf-8").split("\n")
     new_week_line = f"- [{week_label}]({week_path})"
@@ -267,6 +302,34 @@ def tool_update_index(
     week_label: str, week_path: str,
     month_label: str = None, month_path: str = None,
 ) -> str:
+    # --- secondary エンジン: 自分のアーカイブ一覧だけを更新する ---
+    if not ENGINE["primary"]:
+        results = []
+        w_stem = Path(week_path).stem
+        w_year, w_mmdd = w_stem.split("-", 1)
+        w_href = f"{ENGINE['weekly_dir']}/{w_year}-{w_mmdd}"
+        w_date = f"{w_year}-{w_mmdd[:2]}-{w_mmdd[2:]}"
+        week_li = (
+            f'  <li><a href="{{{{ site.baseurl }}}}/{w_href}">'
+            f'{week_label}</a><span class="date">{w_date}</span></li>'
+        )
+        if _insert_li_at_top_of_ul(PROJECT_DIR / ENGINE["weekly_dir"] / "index.md", week_li):
+            results.append(f"{ENGINE['weekly_dir']}/index.md")
+
+        if month_label and month_path:
+            m_stem = Path(month_path).stem
+            m_year, m_month = m_stem.split("-", 1)
+            m_href = f"{ENGINE['monthly_dir']}/{m_year}-{m_month}"
+            month_li = (
+                f'  <li><a href="{{{{ site.baseurl }}}}/{m_href}">'
+                f'{month_label}</a><span class="date">{m_year}-{m_month}</span></li>'
+            )
+            if _insert_li_at_top_of_ul(PROJECT_DIR / ENGINE["monthly_dir"] / "index.md", month_li):
+                results.append(f"{ENGINE['monthly_dir']}/index.md")
+
+        log(f"update_index (secondary {ENGINE['slug']}): {week_label} → {results}")
+        return f"アーカイブ index 更新完了: {', '.join(results) if results else '変更なし'}"
+
     w_stem = Path(week_path).stem
     w_year, w_mmdd = w_stem.split("-", 1)
     w_href = f"articles/weekly/{w_year}-{w_mmdd}"
@@ -351,19 +414,7 @@ def log(msg: str) -> None:
 # システムプロンプト
 # ------------------------------------------------------------------ #
 
-SYSTEM_PROMPT_TMPL = """\
-あなたは気象ニュースまとめライターです。
-以下の手順に従い、ツールを使いながら週次まとめ記事を自動生成してください。
-
-# 基本情報
-- 今日: {today}
-- 実行モード: {mode}
-- 週次ファイルパス: articles/weekly/{year}-{week_file}.md
-- 週表示ラベル: {week_label}
-{monthly_info}
-
-# 作業手順
-1. **情報収集** — search_web で以下のキーワードを順番に検索する（各キーワード1回ずつ）
+SEARCH_KEYWORDS_BLOCK = """\
    - 「気象庁 プレスリリース 今週」
    - 「異常気象 今週 記録」
    - 「台風 最新情報」
@@ -373,14 +424,30 @@ SYSTEM_PROMPT_TMPL = """\
    - 「防災 気象庁 新サービス」
    - 「WMO 世界気象 最新発表」
    - 「エルニーニョ ラニーニャ 最新」
-   - 「気象 研究 論文 今週」
+   - 「気象 研究 論文 今週」"""
+
+# --- primary エンジン（qwen）: README・トップ index.md まで更新する ---
+SYSTEM_PROMPT_TMPL = """\
+あなたは気象ニュースまとめライターです。
+以下の手順に従い、ツールを使いながら週次まとめ記事を自動生成してください。
+
+# 基本情報
+- 今日: {today}
+- 実行モード: {mode}
+- 週次ファイルパス: {weekly_dir}/{year}-{week_file}.md
+- 週表示ラベル: {week_label}
+{monthly_info}
+
+# 作業手順
+1. **情報収集** — search_web で以下のキーワードを順番に検索する（各キーワード1回ずつ）
+{keywords}
 
 2. **補足取得** — fetch_url で以下のサイトを直接確認する
    - https://www.jma.go.jp/jma/press/
    - https://public.wmo.int/en/media/news
 
 3. **記事生成** — 収集した情報を統合して週次記事を write_article で保存する
-   - ファイルパス: articles/weekly/{year}-{week_file}.md
+   - ファイルパス: {weekly_dir}/{year}-{week_file}.md
 
 4. **README 更新** — append_to_readme で週次リンクを追加する
 
@@ -389,10 +456,10 @@ SYSTEM_PROMPT_TMPL = """\
 {monthly_step}
 
 6. **コミット** — git_commit_push でファイルをコミット・プッシュする
-   - articles/weekly/{year}-{week_file}.md
+   - {weekly_dir}/{year}-{week_file}.md
    - README.md
    - index.md
-   - articles/weekly/index.md
+   - {weekly_dir}/index.md
 
 # 記事フォーマット
 - タイトル行: `# 気象ニュースダイジェスト（{week_label}）`
@@ -402,11 +469,11 @@ SYSTEM_PROMPT_TMPL = """\
 
 # append_to_readme の引数
 - week_label: "{week_label}"
-- week_path: "./articles/weekly/{year}-{week_file}.md"
+- week_path: "./{weekly_dir}/{year}-{week_file}.md"
 
 # update_index の引数
 - week_label: "{week_label}"
-- week_path: "./articles/weekly/{year}-{week_file}.md"
+- week_path: "./{weekly_dir}/{year}-{week_file}.md"
 
 # コミットメッセージ形式
 ```
@@ -416,25 +483,92 @@ Co-Authored-By: {model} via Ollama <noreply@local>
 ```
 """
 
+# --- secondary エンジン（ornith / nemotron など比較用の追加ローカルLLM）: ---
+#   自分の記事と自分のアーカイブ一覧だけを更新する。
+#   README・トップ index.md には触れない（比較ページは generate_compare.py が生成）。
+SYSTEM_PROMPT_SECONDARY_TMPL = """\
+あなたは気象ニュースまとめライターです。
+以下の手順に従い、ツールを使いながら週次まとめ記事を自動生成してください。
+
+# 基本情報
+- 今日: {today}
+- 実行モード: {mode}
+- 使用モデル: {model}（モデル比較用の追加ローカルLLM）
+- 週次ファイルパス: {weekly_dir}/{year}-{week_file}.md
+- 週表示ラベル: {week_label}
+{monthly_info}
+
+# 重要な制約
+- 触ってよいファイルは自分の記事ファイルと {weekly_dir}/index.md（月次時は {monthly_dir}/index.md）だけです。
+- README.md やトップの index.md には**絶対に触れないでください**。append_to_readme は呼ばないこと。
+- 比較ページは後で別プロセス（generate_compare.py）が自動生成します。
+
+# 作業手順
+1. **情報収集** — search_web で以下のキーワードを順番に検索する（各キーワード1回ずつ）
+{keywords}
+
+2. **補足取得** — fetch_url で以下のサイトを直接確認する
+   - https://www.jma.go.jp/jma/press/
+   - https://public.wmo.int/en/media/news
+
+3. **記事生成** — 収集した情報を統合して週次記事を write_article で保存する
+   - ファイルパス: {weekly_dir}/{year}-{week_file}.md
+
+{monthly_step}
+
+4. **アーカイブ更新** — update_index を呼ぶ（自分のアーカイブ一覧だけが更新される）
+   - week_label: "{week_label}"
+   - week_path: "./{weekly_dir}/{year}-{week_file}.md"
+
+5. **コミット** — git_commit_push で以下をコミット・プッシュする
+   - {weekly_dir}/{year}-{week_file}.md
+   - {weekly_dir}/index.md
+{monthly_commit}
+
+# 記事フォーマット
+- タイトル行: `# 気象ニュースダイジェスト（{week_label}）`
+- 最低 5 トピック以上（気象庁情報を必ず 1 件以上含める）
+- 各情報源の URL を必ず記載
+- 日本語で記述
+
+# コミットメッセージ形式
+```
+{year}-{week_file} {slug} 週次まとめを追加（ローカルLLM生成）
+
+Co-Authored-By: {model} via Ollama <noreply@local>
+```
+"""
+
 
 def build_system_prompt(args) -> str:
     today = datetime.now(JST).strftime("%Y-%m-%d")
+    weekly_dir = ENGINE["weekly_dir"]
+    monthly_dir = ENGINE["monthly_dir"]
     monthly_info = ""
     monthly_step = ""
+    monthly_commit = ""
     if args.mode == "monthly":
-        monthly_info = f"- 月次ファイルパス: articles/monthly/{args.year}-{args.month}.md"
+        monthly_info = f"- 月次ファイルパス: {monthly_dir}/{args.year}-{args.month}.md"
         monthly_step = (
-            f"5.5. **月次記事生成** — 前月の週次まとめを参照し、"
-            f"月次まとめ（articles/monthly/{args.year}-{args.month}.md）を write_article で生成する\n"
+            f"**月次記事生成（週次記事の直後に実施）** — 前月の週次まとめを参照し、"
+            f"月次まとめ（{monthly_dir}/{args.year}-{args.month}.md）を write_article で生成する\n"
         )
-    return SYSTEM_PROMPT_TMPL.format(
+        monthly_commit = f"   - {monthly_dir}/{args.year}-{args.month}.md\n   - {monthly_dir}/index.md"
+
+    tmpl = SYSTEM_PROMPT_TMPL if ENGINE["primary"] else SYSTEM_PROMPT_SECONDARY_TMPL
+    return tmpl.format(
         today=today,
         mode=args.mode,
         year=args.year,
         week_file=args.week_file,
         week_label=args.week_label,
+        weekly_dir=weekly_dir,
+        monthly_dir=monthly_dir,
         monthly_info=monthly_info,
         monthly_step=monthly_step,
+        monthly_commit=monthly_commit,
+        keywords=SEARCH_KEYWORDS_BLOCK,
+        slug=ENGINE["slug"],
         model=args.model,
     )
 
@@ -490,11 +624,16 @@ def run_agent(args) -> bool:
 
         if turn >= FORCE_WRITE_TURN and not write_article_called and not force_write_prompted:
             log("WARN: 情報収集ターン超過 → write_article を促進")
+            post_steps = (
+                "append_to_readme → update_index → git_commit_push"
+                if ENGINE["primary"]
+                else "update_index → git_commit_push"
+            )
             messages.append({
                 "role": "user",
                 "content": (
                     "情報収集は十分です。今すぐ write_article で週次記事を生成してください。"
-                    "生成後、append_to_readme → update_index → git_commit_push の順で後処理を行ってください。"
+                    f"生成後、{post_steps} の順で後処理を行ってください。"
                 ),
             })
             force_write_prompted = True
@@ -575,7 +714,13 @@ def main():
     parser.add_argument("--year",       required=True, help="例: 2026")
     parser.add_argument("--month",      required=True, help="例: 06")
     parser.add_argument("--model",      default=DEFAULT_MODEL, help="Ollama モデル名")
+    parser.add_argument("--slug",       default="qwen", choices=sorted(ENGINES.keys()),
+                        help="比較エンジン識別子（qwen=既存 / ornith・nemotron=追加ローカルLLM）")
     args = parser.parse_args()
+
+    global ENGINE
+    ENGINE = {**ENGINES[args.slug], "slug": args.slug}
+    log(f"エンジン: slug={args.slug} weekly_dir={ENGINE['weekly_dir']} primary={ENGINE['primary']}")
 
     try:
         requests.get(f"{OLLAMA_BASE}/api/tags", timeout=5).raise_for_status()
