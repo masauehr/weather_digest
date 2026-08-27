@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN"
+  "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+  com.user.weather_digest_nemotron.plist — launchd設定（nemotron-3.5-lightning:30b-mlx）
+  設置先: ~/Library/LaunchAgents/com.user.weather_digest_nemotron.plist
+  登録:   launchctl load ~/Library/LaunchAgents/com.user.weather_digest_nemotron.plist
+  手動実行: launchctl start com.user.weather_digest_nemotron
+
+  実行タイミング: 毎週日曜 10:30（qwen版 08:00・ornith版 09:30 の後、Haiku版 12:00 の前）
+-->
+<plist version="1.0">
+<dict>
+  <key>Label</key>
+  <string>com.user.weather_digest_nemotron</string>
+
+  <key>ProgramArguments</key>
+  <array>
+    <string>/bin/bash</string>
+    <string>/Users/masahiro/projects/weather_digest/scripts/run_weather_nemotron.sh</string>
+  </array>
+
+  <!-- 実行スケジュール: 毎週日曜 10:30 -->
+  <key>StartCalendarInterval</key>
+  <dict>
+    <key>Weekday</key>
+    <integer>0</integer>
+    <key>Hour</key>
+    <integer>10</integer>
+    <key>Minute</key>
+    <integer>30</integer>
+  </dict>
+
+  <key>EnvironmentVariables</key>
+  <dict>
+    <key>PATH</key>
+    <string>/Users/masahiro/.local/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin:/opt/anaconda3/bin</string>
+    <key>HOME</key>
+    <string>/Users/masahiro</string>
+    <key>LANG</key>
+    <string>ja_JP.UTF-8</string>
+  </dict>
+
+  <key>StandardOutPath</key>
+  <string>/Users/masahiro/projects/weather_digest/weather_digest_nemotron.log</string>
+  <key>StandardErrorPath</key>
+  <string>/Users/masahiro/projects/weather_digest/weather_digest_nemotron.log</string>
+
+  <key>RunAtLoad</key>
+  <false/>
+
+  <key>WorkingDirectory</key>
+  <string>/Users/masahiro/projects/weather_digest</string>
+</dict>
+</plist>
