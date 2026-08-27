@@ -299,6 +299,43 @@ OLLAMA_MODEL=nemotron-3.5-lightning:30b bash ~/projects/weather_digest/scripts/r
 
 ---
 
+## 追加ローカルLLM 2種の選定根拠（2026-08-28）
+
+`ornith-1.5:35b` と `nemotron-3.5-lightning:30b-mlx` を比較対象に追加したのは、
+別プロジェクト local_agent の実測比較「ローカルLLM実測比較」（2026-08-26、
+<https://masauehr.github.io/local_agent/>）で両モデルが Ollama の tool-calling エージェントとして
+**ファイル作成〜git push まで完走できる**ことを確認済みだったため。同記事からの引用:
+
+| 指標（local_agent の計測） | qwen3.6 | ornith-1.5:35b | nemotron-3.5-lightning:30b-mlx |
+|---|---|---|---|
+| コード生成 平均時間 | 88.9秒 | **26.1秒（最速、qwen3.6の約3倍速）** | 80.4秒 |
+| コード生成 PASS率 | — | 3/3 | 3/3 |
+| ツール呼び出しエージェント 完走時間 | — | **158.5秒（最速）** | 291.5秒 |
+| エージェントタスク | — | PASS（8ターンで完走） | PASS（8ターンで完走） |
+| 総括での位置付け | 基準 | 「生成速度・エージェント安定性ともに最有力」 | 「実績重視・手堅い選択肢」 |
+
+> local_agent 記事の要点: 「**コード生成単体の比較と、エージェントとしての比較は別物**」。
+> `nemotron` は「出力にコードブロック二重ネストの癖がある点だけ後処理側で要注意」と明記されている。
+> なお、当マニュアル既出の `local-llm-agent.md`（2026-08-16 検証）では
+> `nemotron-3.5-lightning:30b-mlx` はプリフィル約850〜1,080 tok/s と高速な一方、
+> デコード側で5分タイムアウトが頻発する、との記録もある。
+
+### weather_digest での先行テスト実行（2026-08-28、週 `0828`）
+
+launchd の初回稼働（日曜）を待たず、`run_weather_ornith.sh` / `run_weather_nemotron.sh` を手動実行して
+本パイプラインでの挙動を確認した。
+
+| モデル | 生成記事 | サイズ | トピック数 | 所要（ターン数） | 結果 |
+|---|---|---|---|---|---|
+| ornith-1.5:35b | `articles/ornith_weekly/2026-0828.md` | 約9.6 KB | 7 | 約2分（12ターン） | 記事生成〜push まで完走 |
+| nemotron-3.5-lightning:30b-mlx | `articles/nemotron_weekly/2026-0828.md` | 約4.0 KB | 8 | 約3分（16ターン） | 記事生成〜push まで完走 |
+
+- どちらも secondary エンジンとして README・トップ `index.md` を触らず、自分のアーカイブ一覧のみ更新することを確認。
+- `nemotron` は local_agent の所見どおり情報量が少なめで、出典 URL に実在しない形式のもの（`https://news.web.nhk/...` など）が混じっていた。これは比較ページ＋Sonnet 評価で可視化される想定。
+- 懸念された `nemotron` のデコード5分タイムアウトは、この2回の実行では発生せず完走した。
+
+---
+
 ## GitHub Pages
 
 | ページ | URL |
