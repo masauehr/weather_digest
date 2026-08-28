@@ -289,7 +289,26 @@ def build_prompt(args) -> str:
 # Claude Code CLI 呼び出し（Pro/Maxサブスクリプション。APIクレジット不要）
 # ------------------------------------------------------------------ #
 
+# --- オーケストレーション計測（フェーズ1b）: サブスク利用枠の消費を共有台帳へ記録。
+#     import・記録に失敗しても本処理は継続する。 ---
+try:
+    sys.path.insert(0, "/Users/masahiro/projects/agent_orchestrator")
+    from orch_meter import record_llm as _orch_record_llm
+
+    def _rec_haiku(model, in_tok, out_tok, wall_s, usd, is_error):
+        _orch_record_llm("weather_digest", "haiku_run", "haiku", model,
+                         in_tok, out_tok, wall_s,
+                         usd=usd or 0.0, billing="subscription",
+                         gate="error" if is_error else "n/a")
+except Exception:
+    def _rec_haiku(*_a, **_k):
+        return None
+
+
 def run_claude_cli(prompt: str, model: str, budget_usd: str, timeout_sec: int = 1800) -> bool:
+    import json as _json
+    import time as _time
+
     env = os.environ.copy()
     # サブスク認証を強制するため、APIキー系の環境変数は明示的に除去する
     env.pop("ANTHROPIC_API_KEY", None)
@@ -303,19 +322,42 @@ def run_claude_cli(prompt: str, model: str, budget_usd: str, timeout_sec: int = 
         "--max-budget-usd", budget_usd,
         "--allowedTools", "WebSearch,WebFetch,Write,Read",
         "--input-format", "text",
+        "--output-format", "json",   # usage / コストを取得して計測するため
     ]
     log(f"Claude Code CLI 起動: model={model} budget=${budget_usd}")
+    _t0 = _time.monotonic()
     try:
         result = subprocess.run(
             cmd, input=prompt, text=True, cwd=PROJECT_DIR, env=env,
-            timeout=timeout_sec,
+            timeout=timeout_sec, capture_output=True,
         )
     except subprocess.TimeoutExpired:
         log(f"ERROR: Claude Code CLI がタイムアウトしました（{timeout_sec}秒）")
         return False
+    _wall = _time.monotonic() - _t0
 
-    if result.returncode != 0:
-        log(f"ERROR: Claude Code CLI が終了コード {result.returncode} で失敗しました")
+    if result.stderr:
+        log(result.stderr.strip())
+
+    data = {}
+    try:
+        data = _json.loads(result.stdout or "{}")
+    except ValueError:
+        log((result.stdout or "(CLI 出力なし)")[:2000])
+
+    _u = data.get("usage") or {}
+    _in = (int(_u.get("input_tokens", 0)) + int(_u.get("cache_read_input_tokens", 0))
+           + int(_u.get("cache_creation_input_tokens", 0)))
+    _rec_haiku(model, _in, int(_u.get("output_tokens", 0)), _wall,
+               data.get("total_cost_usd"), data.get("is_error"))
+
+    _text = data.get("result") or ""
+    if _text:
+        log(f"--- Claude Code CLI 出力 ---\n{_text}\n---------------------------")
+
+    if result.returncode != 0 or data.get("is_error") is True:
+        log(f"ERROR: Claude Code CLI 失敗（exit={result.returncode} "
+            f"is_error={data.get('is_error')}）")
         return False
     return True
 
