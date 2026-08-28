@@ -225,6 +225,9 @@ PROMPT_WEEKLY_TMPL = """\
 - 日本語で記述
 - 英語タイトルのリンクには日本語訳を併記
   例: `[GraphCast: AI weather forecasting（AI天気予報モデルGraphCastについて）](URL)`
+
+# 事前収集済み情報（事前スクリプトで取得済み。空の場合はすべて WebSearch / WebFetch で収集すること）
+{prefetch}
 """
 
 PROMPT_MONTHLY_TMPL = """\
@@ -270,19 +273,36 @@ PROMPT_MONTHLY_TMPL = """\
 - 日本語で記述
 - 月次まとめらしい俯瞰的なトレンド表（マークダウン表）を末尾に入れる
 - 英語タイトルのリンクには日本語訳を併記
+
+# 事前収集済み情報（事前スクリプトで取得済み。空の場合はすべて WebSearch / WebFetch で収集すること）
+{prefetch}
 """
+
+
+def _resolve_prefetch(value: str) -> str:
+    """--prefetch は本文テキスト、または '@/path/to/file' でファイル指定できる。"""
+    if value.startswith("@"):
+        p = Path(value[1:])
+        try:
+            return p.read_text(encoding="utf-8").strip()
+        except OSError as e:
+            log(f"WARN: prefetch ファイルを読めません（{e}）→ prefetch なしで続行")
+            return ""
+    return value
 
 
 def build_prompt(args) -> str:
     today = datetime.now(JST).strftime("%Y-%m-%d")
+    _pf = _resolve_prefetch(args.prefetch) if getattr(args, "prefetch", "") else ""
+    prefetch = _pf if _pf else "（なし — すべて WebSearch / WebFetch で収集すること）"
     if args.mode == "monthly":
         return PROMPT_MONTHLY_TMPL.format(
             today=today, year=args.year, month=args.month,
-            month_int=int(args.month),
+            month_int=int(args.month), prefetch=prefetch,
         )
     return PROMPT_WEEKLY_TMPL.format(
         today=today, year=args.year, week_file=args.week_file,
-        week_label=args.week_label,
+        week_label=args.week_label, prefetch=prefetch,
     )
 
 # ------------------------------------------------------------------ #
@@ -430,6 +450,7 @@ def main():
     parser.add_argument("--year",       required=True, help="例: 2026")
     parser.add_argument("--month",      required=True, help="例: 06")
     parser.add_argument("--model",      default=DEFAULT_MODEL, help="Claude Code CLI モデルエイリアス（例: haiku）")
+    parser.add_argument("--prefetch",   default="", help="事前収集テキスト、または @/path/to/file")
     args = parser.parse_args()
 
     if not Path(CLAUDE_BIN).exists():
