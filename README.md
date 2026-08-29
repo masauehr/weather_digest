@@ -66,6 +66,7 @@ weather_digest/
 
 ### 週次まとめ（Ollama / qwen）
 
+- [8/23〜8/30](./articles/weekly/2026-0830.md)
 - [8/16〜8/23](./articles/weekly/2026-0823.md)
 - [8/9〜8/16](./articles/weekly/2026-0816.md)
 - [8/2〜8/9](./articles/weekly/2026-0809.md)
@@ -111,6 +112,7 @@ weather_digest/
 
 ### 月次まとめ
 
+- [2026年8月](./articles/monthly/2026-08.md)
 - [2026年8月](./articles/monthly/2026-08.md)
 - [2026年8月](./articles/monthly/2026-08.md)
 - [2026年7月](./articles/monthly/2026-07.md)
