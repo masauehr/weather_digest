@@ -28,6 +28,9 @@ macOS の launchd から Ollama（ローカルLLM 3種）と Claude Haiku（Clau
 >   - 対応: 上記方式変更後、2026-07-25 に `articles/haiku_weekly/2026-0719.md`（commit `fc2c7b2`）と `articles/compare/2026-0719.md`（commit `0a9e67c`）を手動バックフィル生成し、以降の自動実行も新方式に統一した
 > - 2026-08-28: 比較対象にローカルLLM 2種（`ornith-1.5:35b` / `nemotron-3.5-lightning:30b-mlx`）を追加し、2モデル比較 → 4モデル比較に拡張
 >   - `local_agent.py` に `--slug`（qwen / ornith / nemotron）を追加。ornith / nemotron は「secondary エンジン」で、README・トップ index.md は更新せず `articles/<slug>_weekly/index.md` のみ更新する
+> - 2026-08-28: **agent_orchestrator（メタプロジェクト）と計測連携**。`local_agent.py` の `call_ollama()` と `haiku_agent.py` の `run_claude_cli()` に、トークン・時間・コストを共有台帳へ追記する数行を追加（挙動変更なし）。`run_claude_cli` は `--output-format json` + `capture_output` 化し `usage`/`total_cost_usd` を取得、CLI 出力テキストは `.result` をログ再表示。詳細は [agent-orchestrator](agent-orchestrator.md)
+> - 2026-08-28: **フェーズ2 横展開**。`run_weather_haiku.sh` が Haiku 起動前に agent_orchestrator の `weather_prefetch` パイプライン（検索→本文取得→ローカルOllamaで圧縮要約）を実行し、結果を `haiku_agent.py --prefetch @file` で渡す。`haiku_agent.py` に `--prefetch` 引数と両プロンプトの `{prefetch}` 枠を追加。失敗時は Haiku 単独実行にフォールバック。
+> - 2026-09-09: **Sonnet 比較評価の採点スコアを共有台帳へ記録**。`generate_compare.py` の `evaluate_with_sonnet` が評価プロンプト末尾で「5観点（情報の正確性／カバレッジ／独自性／読みやすさ／総合構成）を qwen 記事・Haiku 記事それぞれ 1〜5 で採点」した JSON を要求し、`orch_meter.parse_eval_scores` で抽出 → `record_eval("weather_digest", ...)` で `task="evaluate"` の 1 行を追記（比較ページ本文からは JSON を除去。baseline=qwen / candidate=haiku をスラグで特定）。判定は Δ = Haiku − qwen ≥ −0.3 で合格、集計は `orchestrator.cli report` の「品質評価」節。agent_orchestrator を import できないときはシムが no-op になり比較ページ生成は継続。
 >   - `run_weather_ornith.sh`（09:30）・`run_weather_nemotron.sh`（10:30）と対応 plist を新規追加。ログは `weather_digest_<slug>.log`
 >   - `generate_compare.py` を N モデル対応に一般化（`ENGINES` リストで定義、qwen と Haiku を必須、他は記事があれば追加）
 

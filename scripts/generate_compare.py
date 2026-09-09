@@ -36,6 +36,32 @@ JST = timezone(timedelta(hours=9))
 SONNET_MODEL = "claude-sonnet-4-6"
 CLAUDE_BIN = str(Path.home() / ".local" / "bin" / "claude")
 
+# Sonnet 採点の評価軸（下の評価観点と対応させる）
+EVAL_AXES = ["情報の正確性", "カバレッジ", "独自性", "読みやすさ", "総合構成"]
+
+# 採点スコアを共有台帳（agent_orchestrator/var/ledger.jsonl）へ記録するシム。
+# agent_orchestrator が無い環境でも本処理を止めないよう、失敗時は無害な no-op にする。
+try:
+    sys.path.insert(0, "/Users/masahiro/projects/agent_orchestrator")
+    from orch_meter import (
+        eval_json_instruction as _eval_json_instruction,
+        parse_eval_scores as _parse_eval_scores,
+        record_eval as _record_eval,
+        strip_eval_json_block as _strip_eval_json_block,
+    )
+except Exception:  # noqa: BLE001
+    def _eval_json_instruction(*_a, **_k):
+        return ""
+
+    def _parse_eval_scores(*_a, **_k):
+        return {"parse_error": "orch_meter 未導入"}
+
+    def _record_eval(*_a, **_k):
+        return {}
+
+    def _strip_eval_json_block(text, *_a, **_k):
+        return text
+
 # ------------------------------------------------------------------ #
 # 比較エンジン定義（順序 = パネルの並び順）
 # ------------------------------------------------------------------ #
@@ -248,16 +274,42 @@ def evaluate_with_sonnet(week_label: str, present: list) -> str:
         f"## 評価対象週: {week_label}\n"
         f"{articles_block}\n"
         "---\n\n"
-        "上記の記事を評価してください。"
+        "上記の記事を評価してください。\n"
     )
 
+    # baseline = qwen（ローカル既定）、candidate = haiku。台帳へ Δ を残すための採点 JSON を要求する
+    _base = next((c for e, c in present if e["slug"] == "qwen"), None)
+    _cand = next((c for e, c in present if e["slug"] == "haiku"), None)
+    if _base is not None and _cand is not None:
+        prompt += _eval_json_instruction(
+            EVAL_AXES,
+            "qwen（Ollama qwen3.6:35b-mlx）の記事",
+            "haiku（Claude Haiku）の記事",
+        )
+
     try:
+        _t0 = datetime.now(JST)
         evaluation = run_claude_cli_text(prompt, model="sonnet", budget_usd="1.00")
+        _wall_s = (datetime.now(JST) - _t0).total_seconds()
         log("Sonnet 評価完了")
-        return evaluation
     except Exception as e:
         log(f"Sonnet 評価エラー: {e}")
         return ""
+
+    # 採点 JSON を抽出して共有台帳へ記録し、本文からは JSON ブロックを除去する
+    if _base is not None and _cand is not None:
+        try:
+            scores = _parse_eval_scores(evaluation, EVAL_AXES)
+            _record_eval("weather_digest", scores, label=week_label, wall_s=_wall_s,
+                         baseline_model="qwen3.6:35b-mlx", candidate_model="claude-haiku-4-5")
+            if "parse_error" in scores:
+                log(f"WARN: 採点スコア抽出失敗: {scores['parse_error']}")
+            else:
+                log(f"採点記録: baseline={scores['baseline_overall']} "
+                    f"candidate={scores['candidate_overall']} Δ={scores['delta']:+.2f}")
+        except Exception as e:  # noqa: BLE001
+            log(f"WARN: 採点記録に失敗: {e}")
+    return _strip_eval_json_block(evaluation)
 
 
 def _evaluation_html(evaluation: str) -> str:
