@@ -7,6 +7,7 @@ title: ornith週次まとめ一覧
 
 <ul class="article-list">
   <li><a href="{{ site.baseurl }}/articles/ornith_weekly/2026-0913">9/6〜9/13</a><span class="date">2026-09-13</span></li>
+  <li><a href="{{ site.baseurl }}/articles/ornith_weekly/2026-0913">9/6〜9/13</a><span class="date">2026-09-13</span></li>
   <li><a href="{{ site.baseurl }}/articles/ornith_weekly/2026-09">2026年9月</a><span class="date">2026-09-</span></li>
   <li><a href="{{ site.baseurl }}/articles/ornith_weekly/2026-0906">8/30〜9/6</a><span class="date">2026-09-06</span></li>
   <li><a href="{{ site.baseurl }}/articles/ornith_weekly/2026-0830">8/23〜8/30</a><span class="date">2026-08-30</span></li>
