@@ -6,6 +6,7 @@ title: Haiku週次まとめ一覧
 # Haiku週次まとめ一覧（Claude Haiku）
 
 <ul class="article-list">
+  <li><a href="{{ site.baseurl }}/articles/haiku_weekly/2026-0920">9/13〜9/20</a><span class="date">2026-09-20</span></li>
   <li><a href="{{ site.baseurl }}/articles/haiku_weekly/2026-0913">9/6〜9/13</a><span class="date">2026-09-13</span></li>
   <li><a href="{{ site.baseurl }}/articles/haiku_weekly/2026-0906">8/30〜9/6</a><span class="date">2026-09-06</span></li>
   <li><a href="{{ site.baseurl }}/articles/haiku_weekly/2026-0830">8/23〜8/30</a><span class="date">2026-08-30</span></li>
