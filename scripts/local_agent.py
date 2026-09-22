@@ -54,6 +54,11 @@ ENGINES = {
         "monthly_dir": "articles/nemotron_monthly",
         "primary": False,
     },
+    "qwen38": {
+        "weekly_dir": "articles/qwen38_weekly",
+        "monthly_dir": "articles/qwen38_monthly",
+        "primary": False,
+    },
 }
 
 # 実行中のエンジン設定（main() で --slug に応じて差し替える）
@@ -285,7 +290,10 @@ def tool_append_to_readme(
 def _insert_li_at_top_of_ul(md_path: Path, new_li: str) -> bool:
     if not md_path.exists():
         return False
-    lines = md_path.read_text(encoding="utf-8").split("\n")
+    content = md_path.read_text(encoding="utf-8")
+    if new_li.strip() in content:
+        return False  # 既に存在する場合はスキップ（同一引数での二重呼び出し対策）
+    lines = content.split("\n")
     result = []
     inserted = False
     for line in lines:
@@ -516,9 +524,11 @@ SYSTEM_PROMPT_SECONDARY_TMPL = """\
 
 {monthly_step}
 
-4. **アーカイブ更新** — update_index を呼ぶ（自分のアーカイブ一覧だけが更新される）
+4. **アーカイブ更新** — update_index を**1回だけ**呼ぶ（自分のアーカイブ一覧だけが更新される。
+   同じ引数で2回以上呼ばないこと。月次モードでは week 系・month 系の引数を**この1回の呼び出しに両方まとめて**渡すこと）
    - week_label: "{week_label}"
    - week_path: "./{weekly_dir}/{year}-{week_file}.md"
+{monthly_index_args}
 
 5. **コミット** — git_commit_push で以下をコミット・プッシュする
    - {weekly_dir}/{year}-{week_file}.md
@@ -547,13 +557,19 @@ def build_system_prompt(args) -> str:
     monthly_info = ""
     monthly_step = ""
     monthly_commit = ""
+    monthly_index_args = ""
     if args.mode == "monthly":
+        month_label = f"{args.year}年{int(args.month)}月"
         monthly_info = f"- 月次ファイルパス: {monthly_dir}/{args.year}-{args.month}.md"
         monthly_step = (
             f"**月次記事生成（週次記事の直後に実施）** — 前月の週次まとめを参照し、"
             f"月次まとめ（{monthly_dir}/{args.year}-{args.month}.md）を write_article で生成する\n"
         )
         monthly_commit = f"   - {monthly_dir}/{args.year}-{args.month}.md\n   - {monthly_dir}/index.md"
+        monthly_index_args = (
+            f'   - month_label: "{month_label}"\n'
+            f'   - month_path: "./{monthly_dir}/{args.year}-{args.month}.md"'
+        )
 
     tmpl = SYSTEM_PROMPT_TMPL if ENGINE["primary"] else SYSTEM_PROMPT_SECONDARY_TMPL
     return tmpl.format(
@@ -567,6 +583,7 @@ def build_system_prompt(args) -> str:
         monthly_info=monthly_info,
         monthly_step=monthly_step,
         monthly_commit=monthly_commit,
+        monthly_index_args=monthly_index_args,
         keywords=SEARCH_KEYWORDS_BLOCK,
         slug=ENGINE["slug"],
         model=args.model,
@@ -732,7 +749,7 @@ def main():
     parser.add_argument("--month",      required=True, help="例: 06")
     parser.add_argument("--model",      default=DEFAULT_MODEL, help="Ollama モデル名")
     parser.add_argument("--slug",       default="qwen", choices=sorted(ENGINES.keys()),
-                        help="比較エンジン識別子（qwen=既存 / ornith・nemotron=追加ローカルLLM）")
+                        help="比較エンジン識別子（qwen=既存 / ornith・nemotron・qwen38=追加ローカルLLM）")
     args = parser.parse_args()
 
     global ENGINE

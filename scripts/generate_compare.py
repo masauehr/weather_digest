@@ -8,8 +8,9 @@ generate_compare.py — 複数モデルの週次記事を並べた比較ペー�
   - qwen      : Ollama qwen3.6:35b-mlx            （日曜 08:00 / articles/weekly）
   - ornith    : Ollama ornith-1.5:35b             （日曜 09:30 / articles/ornith_weekly）
   - nemotron  : Ollama nemotron-3.5-lightning:30b-mlx（日曜 10:30 / articles/nemotron_weekly）
+  - qwen38    : Ollama qwen3.8:27b-mlx            （日曜 11:00 / articles/qwen38_weekly）【2026-09-22追加】
   - haiku     : Claude Haiku（claude-haiku-4-5）   （日曜 12:00 / articles/haiku_weekly）
-最低条件は qwen と haiku の両記事が存在すること。ornith / nemotron は
+最低条件は qwen と haiku の両記事が存在すること。ornith / nemotron / qwen38 は
 その週の記事が存在するときだけパネルに追加される（欠けても生成は継続）。
 
 【2026-07-25 変更】
@@ -105,6 +106,19 @@ ENGINES = [
         "panel_class": "nemotron-panel",
         "schedule": "日曜 10:30",
         "past_title": "🌩️ nemotron週次",
+    },
+    {
+        "slug": "qwen38",
+        "weekly_dir": "articles/qwen38_weekly",
+        "archive_index": "articles/qwen38_weekly/index.md",
+        "archive_href": "articles/qwen38_weekly/",
+        "display_name": "Ollama / qwen3.8",
+        "model_name": "qwen3.8:27b-mlx",
+        "emoji": "🔷",
+        "badge_class": "qwen38",
+        "panel_class": "qwen38-panel",
+        "schedule": "日曜 11:00",
+        "past_title": "🔷 qwen3.8週次",
     },
     {
         "slug": "haiku",

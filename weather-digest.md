@@ -7,15 +7,16 @@ Markdown記事としてGitHubに公開する自動化システム。
 
 ## 概要
 
-macOS の launchd から Ollama（ローカルLLM 3種）と Claude Haiku（Claude Code CLI 経由）を呼び出し、
+macOS の launchd から Ollama（ローカルLLM 4種）と Claude Haiku（Claude Code CLI 経由）を呼び出し、
 情報収集 → 記事生成 → git push までを自動化する。  
-同じ週のニュースを計4モデルで記事化し、Claude Sonnet が評価付きの N カラム比較ページを自動生成する。
+同じ週のニュースを計5モデルで記事化し、Claude Sonnet が評価付きの N カラム比較ページを自動生成する。
 
 | タイミング | エンジン | 処理内容 |
 |---|---|---|
 | 毎週日曜 08:00 | Ollama（qwen3.6:35b-mlx） | 直近7日間の気象ニュースを収集 → 週次記事を生成・push |
 | 毎週日曜 09:30 | Ollama（ornith-1.5:35b） | 同じ週の記事を別ファイルに生成・push |
 | 毎週日曜 10:30 | Ollama（nemotron-3.5-lightning:30b-mlx） | 同じ週の記事を別ファイルに生成・push |
+| 毎週日曜 11:00 | Ollama（qwen3.8:27b-mlx） | 同じ週の記事を別ファイルに生成・push |
 | 毎週日曜 12:00 | Claude Haiku（Claude Code CLI） | 同じ週の記事を別ファイルに生成・push |
 | 毎月第1日曜 08:00〜12:00 | 上記各エンジン | 週次記事に加えて月次まとめ記事も生成・push |
 | 12:00 以降（Haiku完了後） | Claude Sonnet（Claude Code CLI） | 揃っている記事を読んで評価 → 評価付き比較ページを生成・push |
@@ -33,6 +34,8 @@ macOS の launchd から Ollama（ローカルLLM 3種）と Claude Haiku（Clau
 > - 2026-09-09: **Sonnet 比較評価の採点スコアを共有台帳へ記録**。`generate_compare.py` の `evaluate_with_sonnet` が評価プロンプト末尾で「5観点（情報の正確性／カバレッジ／独自性／読みやすさ／総合構成）を qwen 記事・Haiku 記事それぞれ 1〜5 で採点」した JSON を要求し、`orch_meter.parse_eval_scores` で抽出 → `record_eval("weather_digest", ...)` で `task="evaluate"` の 1 行を追記（比較ページ本文からは JSON を除去。baseline=qwen / candidate=haiku をスラグで特定）。判定は Δ = Haiku − qwen ≥ −0.3 で合格、集計は `orchestrator.cli report` の「品質評価」節。agent_orchestrator を import できないときはシムが no-op になり比較ページ生成は継続。
 >   - `run_weather_ornith.sh`（09:30）・`run_weather_nemotron.sh`（10:30）と対応 plist を新規追加。ログは `weather_digest_<slug>.log`
 >   - `generate_compare.py` を N モデル対応に一般化（`ENGINES` リストで定義、qwen と Haiku を必須、他は記事があれば追加）
+> - 2026-09-22: 比較対象にローカルLLM `qwen3.8:27b-mlx` を追加（`--slug qwen38`、日曜11:00、`articles/qwen38_weekly/` `articles/qwen38_monthly/`）。5モデル比較に拡張
+>   - あわせて secondary エンジン共通のバグを2件修正。(1) `_insert_li_at_top_of_ul`（`local_agent.py`）に重複挿入防止チェックを追加 — `update_index` が同じ引数で2回呼ばれるとアーカイブ一覧に同一行が重複する不具合があり、`articles/ornith_weekly/index.md` 等で実際に発生していたものを修正。(2) secondary の月次システムプロンプトに `update_index` の `month_label`/`month_path` 引数を明記 — 従来は月次モードでも week 引数しか案内しておらず、モデルが月次エントリを誤った href で週次アーカイブに登録してしまう不具合があった（`articles/ornith_weekly/index.md` に混入していた `2026-09` 行が実例）。既存の破損エントリ（`articles/ornith_weekly/index.md` の重複行・誤 href 行、`articles/monthly/index.md` の三重重複）はあわせて手動で除去した
 
 ---
 
@@ -43,8 +46,9 @@ macOS の launchd から Ollama（ローカルLLM 3種）と Claude Haiku（Clau
 | `articles/weekly/YYYY-MMDD.md` | qwen 週次記事 | Ollama qwen3.6 | 毎週日曜 08:00 |
 | `articles/ornith_weekly/YYYY-MMDD.md` | ornith 週次記事（同じ週を別視点で生成） | Ollama ornith-1.5 | 毎週日曜 09:30 |
 | `articles/nemotron_weekly/YYYY-MMDD.md` | nemotron 週次記事（同じ週を別視点で生成） | Ollama nemotron-3.5-lightning | 毎週日曜 10:30 |
+| `articles/qwen38_weekly/YYYY-MMDD.md` | qwen3.8 週次記事（同じ週を別視点で生成） | Ollama qwen3.8 | 毎週日曜 11:00 |
 | `articles/haiku_weekly/YYYY-MMDD.md` | Haiku 週次記事（同じ週を別視点で生成） | Claude Haiku | 毎週日曜 12:00 |
-| `articles/compare/YYYY-MMDD.md` | 4モデル比較ページ + Sonnet評価 | generate_compare.py | 毎週日曜 12:00以降 |
+| `articles/compare/YYYY-MMDD.md` | 最大5モデル比較ページ + Sonnet評価 | generate_compare.py | 毎週日曜 12:00以降 |
 | `articles/monthly/YYYY-MM.md` ほか `<slug>_monthly/` | 各エンジンの月次まとめ記事 | 各エンジン | 毎月第1日曜 |
 | `articles/haiku_monthly/YYYY-MM.md` | Haiku 月次まとめ記事 | Claude Haiku | 毎月第1日曜 |
 | `README.md` | 最新記事一覧（qwen / Haiku 分を自動更新） | — | 記事生成時 |
@@ -54,7 +58,7 @@ GitHub URL: https://github.com/masauehr/weather_digest
 
 ---
 
-## 仕組み（4エンジン並行 + Sonnet評価付き比較ページ自動生成）
+## 仕組み（5エンジン並行 + Sonnet評価付き比較ページ自動生成）
 
 ### エンジン種別
 
@@ -63,6 +67,7 @@ GitHub URL: https://github.com/masauehr/weather_digest
 | `qwen` | qwen3.6:35b-mlx | 08:00 | primary | 更新する（従来どおり） |
 | `ornith` | ornith-1.5:35b | 09:30 | secondary | 触らない（`articles/ornith_weekly/index.md` のみ更新） |
 | `nemotron` | nemotron-3.5-lightning:30b-mlx | 10:30 | secondary | 触らない（`articles/nemotron_weekly/index.md` のみ更新） |
+| `qwen38` | qwen3.8:27b-mlx | 11:00 | secondary | 触らない（`articles/qwen38_weekly/index.md` のみ更新） |
 | `haiku` | claude-haiku-4-5 | 12:00 | primary | 更新する（従来どおり） |
 
 secondary エンジンは `run_weather_<slug>.sh` → `local_agent.py --slug <slug>` で動く。
@@ -91,12 +96,12 @@ run_weather_ollama.sh が起動
             第1日曜なら月次記事（articles/monthly/YYYY-MM.md）も生成
 ```
 
-### ornith / nemotron 実行フロー（09:30 / 10:30）
+### ornith / nemotron / qwen3.8 実行フロー（09:30 / 10:30 / 11:00）
 
 ```
-launchd（毎週日曜 09:30 / 10:30）
+launchd（毎週日曜 09:30 / 10:30 / 11:00）
   ↓
-run_weather_ornith.sh / run_weather_nemotron.sh が起動
+run_weather_ornith.sh / run_weather_nemotron.sh / run_weather_qwen38.sh が起動
   ↓
 当該slugの週次記事（articles/<slug>_weekly/YYYY-MMDD.md）が存在する？
   ├─ Yes → スキップ
@@ -145,12 +150,12 @@ Haiku記事（articles/haiku_weekly/YYYY-MMDD.md）が存在する？
 ```
 generate_compare.py
   ↓
-ENGINES（qwen / ornith / nemotron / haiku）のうち
+ENGINES（qwen / ornith / nemotron / qwen38 / haiku）のうち
 articles/<weekly_dir>/YYYY-MMDD.md が存在するものを収集
   ├─ qwen または haiku が欠けている → スキップ
   └─ qwen と haiku が揃っている     →
         ↓
-      Claude Sonnet（claude-sonnet-4-6）が揃っている記事（2〜4本）を読んで評価を生成
+      Claude Sonnet（claude-sonnet-4-6）が揃っている記事（2〜5本）を読んで評価を生成
         ↓
       articles/compare/YYYY-MMDD.md を作成（N枚のパネル + Sonnet評価セクション）
       articles/compare/index.md を更新
@@ -158,7 +163,7 @@ articles/<weekly_dir>/YYYY-MMDD.md が存在するものを収集
       git add / commit / push
 ```
 
-> ornith / nemotron の記事がその週に無ければ、その分のパネルは省略されて生成は続行する。
+> ornith / nemotron / qwen38 の記事がその週に無ければ、その分のパネルは省略されて生成は続行する。
 
 ---
 
@@ -172,27 +177,31 @@ weather_digest/
 │   ├── weekly/YYYY-MMDD.md                   # qwen 週次記事
 │   ├── ornith_weekly/YYYY-MMDD.md            # ornith 週次記事
 │   ├── nemotron_weekly/YYYY-MMDD.md          # nemotron 週次記事
+│   ├── qwen38_weekly/YYYY-MMDD.md            # qwen3.8 週次記事
 │   ├── haiku_weekly/YYYY-MMDD.md             # Haiku 週次記事
 │   ├── compare/YYYY-MMDD.md                  # モデル比較ページ（Sonnet評価付き）
 │   ├── monthly/YYYY-MM.md                    # qwen 月次まとめ
 │   ├── ornith_monthly/YYYY-MM.md             # ornith 月次まとめ
 │   ├── nemotron_monthly/YYYY-MM.md           # nemotron 月次まとめ
+│   ├── qwen38_monthly/YYYY-MM.md             # qwen3.8 月次まとめ
 │   ├── haiku_monthly/YYYY-MM.md              # Haiku 月次まとめ
 │   └── topics/YYYY-MM-DD_slug.md             # 深掘りトピックス（手動）
 ├── _layouts/
 │   ├── default.html                           # 記事用レイアウト
 │   └── compare.html                           # 比較・評価用レイアウト（各モデル色・Sonnet評価CSS含む）
 └── scripts/
-    ├── local_agent.py                          # Ollama エージェント（--slug で qwen/ornith/nemotron 切替）
+    ├── local_agent.py                          # Ollama エージェント（--slug で qwen/ornith/nemotron/qwen38 切替）
     ├── haiku_agent.py                          # Claude Haiku エージェント（週次・月次対応）
     ├── generate_compare.py                     # 比較ページ生成 + Sonnet評価（N モデル対応）
     ├── run_weather_ollama.sh                   # qwen実行スクリプト（launchd 08:00）
     ├── run_weather_ornith.sh                   # ornith実行スクリプト（launchd 09:30）
     ├── run_weather_nemotron.sh                 # nemotron実行スクリプト（launchd 10:30）
+    ├── run_weather_qwen38.sh                   # qwen3.8実行スクリプト（launchd 11:00）
     ├── run_weather_haiku.sh                    # Haiku実行スクリプト（launchd 12:00）
     ├── com.user.weather_digest_ollama.plist    # launchd設定（08:00）
     ├── com.user.weather_digest_ornith.plist    # launchd設定（09:30）
     ├── com.user.weather_digest_nemotron.plist  # launchd設定（10:30）
+    ├── com.user.weather_digest_qwen38.plist    # launchd設定（11:00）
     └── com.user.weather_digest_haiku.plist     # launchd設定（12:00）
 ```
 
@@ -224,6 +233,7 @@ weather_digest/
 ~/Library/LaunchAgents/com.user.weather_digest_ollama.plist    毎週日曜 08:00
 ~/Library/LaunchAgents/com.user.weather_digest_ornith.plist    毎週日曜 09:30
 ~/Library/LaunchAgents/com.user.weather_digest_nemotron.plist  毎週日曜 10:30
+~/Library/LaunchAgents/com.user.weather_digest_qwen38.plist    毎週日曜 11:00
 ~/Library/LaunchAgents/com.user.weather_digest_haiku.plist     毎週日曜 12:00
 ```
 
@@ -233,10 +243,12 @@ weather_digest/
 cp ~/projects/weather_digest/scripts/com.user.weather_digest_ollama.plist   ~/Library/LaunchAgents/
 cp ~/projects/weather_digest/scripts/com.user.weather_digest_ornith.plist   ~/Library/LaunchAgents/
 cp ~/projects/weather_digest/scripts/com.user.weather_digest_nemotron.plist ~/Library/LaunchAgents/
+cp ~/projects/weather_digest/scripts/com.user.weather_digest_qwen38.plist   ~/Library/LaunchAgents/
 cp ~/projects/weather_digest/scripts/com.user.weather_digest_haiku.plist    ~/Library/LaunchAgents/
 launchctl load ~/Library/LaunchAgents/com.user.weather_digest_ollama.plist
 launchctl load ~/Library/LaunchAgents/com.user.weather_digest_ornith.plist
 launchctl load ~/Library/LaunchAgents/com.user.weather_digest_nemotron.plist
+launchctl load ~/Library/LaunchAgents/com.user.weather_digest_qwen38.plist
 launchctl load ~/Library/LaunchAgents/com.user.weather_digest_haiku.plist
 ```
 
@@ -247,6 +259,7 @@ launchctl list | grep weather_digest
 # → com.user.weather_digest_ollama     待機中（PID: -）
 # → com.user.weather_digest_ornith     待機中（PID: -）
 # → com.user.weather_digest_nemotron   待機中（PID: -）
+# → com.user.weather_digest_qwen38     待機中（PID: -）
 # → com.user.weather_digest_haiku      待機中（PID: -）
 ```
 
@@ -259,11 +272,12 @@ launchctl list | grep weather_digest
 bash ~/projects/weather_digest/scripts/run_weather_ollama.sh    # qwen（08:00相当）
 bash ~/projects/weather_digest/scripts/run_weather_ornith.sh    # ornith（09:30相当）
 bash ~/projects/weather_digest/scripts/run_weather_nemotron.sh  # nemotron（10:30相当）
+bash ~/projects/weather_digest/scripts/run_weather_qwen38.sh    # qwen3.8（11:00相当）
 
 # Haiku版（12:00相当）を今すぐ実行
 bash ~/projects/weather_digest/scripts/run_weather_haiku.sh
 
-# 比較ページのみ手動生成（qwen と Haiku が揃っていれば実行可。ornith / nemotron はあれば追加）
+# 比較ページのみ手動生成（qwen と Haiku が揃っていれば実行可。ornith / nemotron / qwen38 はあれば追加）
 python3 ~/projects/weather_digest/scripts/generate_compare.py \
   --week-file 0607 --week-label "5/31〜6/7" --year 2026
 
@@ -275,6 +289,7 @@ python3 ~/projects/weather_digest/scripts/generate_compare.py \
 tail -f ~/projects/weather_digest/weather_digest.log           # qwen
 tail -f ~/projects/weather_digest/weather_digest_ornith.log    # ornith
 tail -f ~/projects/weather_digest/weather_digest_nemotron.log  # nemotron
+tail -f ~/projects/weather_digest/weather_digest_qwen38.log    # qwen3.8
 tail -f ~/projects/weather_digest/weather_digest_haiku.log     # Haiku
 ```
 
@@ -287,6 +302,7 @@ tail -f ~/projects/weather_digest/weather_digest_haiku.log     # Haiku
 | 週次・月次記事生成（08:00） | `qwen3.6:35b-mlx` | Ollama ローカルLLM |
 | 週次・月次記事生成（09:30） | `ornith-1.5:35b` | Ollama ローカルLLM |
 | 週次・月次記事生成（10:30） | `nemotron-3.5-lightning:30b-mlx` | Ollama ローカルLLM |
+| 週次・月次記事生成（11:00） | `qwen3.8:27b-mlx` | Ollama ローカルLLM |
 | 週次・月次記事生成（12:00） | `haiku`（Claude Haiku 4.5） | Claude Code CLI（Pro/Maxサブスクリプション）|
 | 比較ページ評価 | `sonnet`（Claude Sonnet 4.6） | Claude Code CLI（Pro/Maxサブスクリプション）|
 
@@ -347,11 +363,13 @@ launchd の初回稼働（日曜）を待たず、`run_weather_ornith.sh` / `run
 | qwen週次一覧 | https://masauehr.github.io/weather_digest/articles/weekly/ |
 | ornith週次一覧 | https://masauehr.github.io/weather_digest/articles/ornith_weekly/ |
 | nemotron週次一覧 | https://masauehr.github.io/weather_digest/articles/nemotron_weekly/ |
+| qwen3.8週次一覧 | https://masauehr.github.io/weather_digest/articles/qwen38_weekly/ |
 | Haiku週次一覧 | https://masauehr.github.io/weather_digest/articles/haiku_weekly/ |
 | モデル比較一覧（Sonnet評価付き） | https://masauehr.github.io/weather_digest/articles/compare/ |
 | qwen月次まとめ一覧 | https://masauehr.github.io/weather_digest/articles/monthly/ |
 | ornith月次まとめ一覧 | https://masauehr.github.io/weather_digest/articles/ornith_monthly/ |
 | nemotron月次まとめ一覧 | https://masauehr.github.io/weather_digest/articles/nemotron_monthly/ |
+| qwen3.8月次まとめ一覧 | https://masauehr.github.io/weather_digest/articles/qwen38_monthly/ |
 | Haiku月次まとめ一覧 | https://masauehr.github.io/weather_digest/articles/haiku_monthly/ |
 
 Jekyll テーマ: カスタム（`_layouts/default.html`・`_layouts/compare.html`）
