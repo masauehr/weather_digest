@@ -12,11 +12,13 @@
 | 🖥️ qwen週次まとめ | https://masauehr.github.io/weather_digest/articles/weekly/ |
 | 🦉 ornith週次まとめ | https://masauehr.github.io/weather_digest/articles/ornith_weekly/ |
 | 🌩️ nemotron週次まとめ | https://masauehr.github.io/weather_digest/articles/nemotron_weekly/ |
+| 🔷 qwen3.8週次まとめ | https://masauehr.github.io/weather_digest/articles/qwen38_weekly/ |
 | ⚡ Haiku週次まとめ | https://masauehr.github.io/weather_digest/articles/haiku_weekly/ |
 | 🔬 モデル比較 | https://masauehr.github.io/weather_digest/articles/compare/ |
 | 📅 qwen月次まとめ | https://masauehr.github.io/weather_digest/articles/monthly/ |
 | 📅 ornith月次まとめ | https://masauehr.github.io/weather_digest/articles/ornith_monthly/ |
 | 📅 nemotron月次まとめ | https://masauehr.github.io/weather_digest/articles/nemotron_monthly/ |
+| 📅 qwen3.8月次まとめ | https://masauehr.github.io/weather_digest/articles/qwen38_monthly/ |
 | 📅 Haiku月次まとめ | https://masauehr.github.io/weather_digest/articles/haiku_monthly/ |
 | ⚙️ 収集・生成仕様 | [SPEC.md](./SPEC.md) |
 
@@ -25,8 +27,8 @@
 ## 概要
 
 気象・気候・防災に関する最新情報を週次・月次で自動収集・要約してGitHub Pages で公開するプロジェクト。
-ローカルLLM 3種（Ollama: qwen3.6 / ornith-1.5 / nemotron-3.5-lightning）と Claude Haiku（Claude Code CLI）の
-計4モデルで同じ週を記事化し、Claude Sonnet が評価した比較ページを自動生成する。
+ローカルLLM 4種（Ollama: qwen3.6 / ornith-1.5 / nemotron-3.5-lightning / qwen3.8）と Claude Haiku（Claude Code CLI）の
+計5モデルで同じ週を記事化し、Claude Sonnet が評価した比較ページを自動生成する。
 
 ## プロジェクト構成
 
@@ -39,24 +41,28 @@ weather_digest/
 │   ├── weekly/YYYY-MMDD.md                   # qwen 週次記事（日曜 08:00 自動生成）
 │   ├── ornith_weekly/YYYY-MMDD.md            # ornith 週次記事（日曜 09:30 自動生成）
 │   ├── nemotron_weekly/YYYY-MMDD.md          # nemotron 週次記事（日曜 10:30 自動生成）
+│   ├── qwen38_weekly/YYYY-MMDD.md            # qwen3.8 週次記事（日曜 11:00 自動生成）
 │   ├── haiku_weekly/YYYY-MMDD.md             # Haiku 週次記事（日曜 12:00 自動生成）
 │   ├── compare/YYYY-MMDD.md                  # モデル比較ページ（12:00以降 自動生成）
 │   ├── monthly/YYYY-MM.md                    # qwen 月次まとめ（第1日曜 08:00 自動生成）
 │   ├── ornith_monthly/YYYY-MM.md             # ornith 月次まとめ（第1日曜 09:30 自動生成）
 │   ├── nemotron_monthly/YYYY-MM.md           # nemotron 月次まとめ（第1日曜 10:30 自動生成）
+│   ├── qwen38_monthly/YYYY-MM.md             # qwen3.8 月次まとめ（第1日曜 11:00 自動生成）
 │   ├── haiku_monthly/YYYY-MM.md              # Haiku 月次まとめ（第1日曜 12:00 自動生成）
 │   └── topics/YYYY-MM-DD_slug.md             # 深掘りトピックス
 └── scripts/
-    ├── local_agent.py                          # Ollama エージェント（--slug で qwen/ornith/nemotron 切替）
+    ├── local_agent.py                          # Ollama エージェント（--slug で qwen/ornith/nemotron/qwen38 切替）
     ├── haiku_agent.py                          # Claude Haiku エージェント
     ├── generate_compare.py                     # 比較ページ生成（N モデル対応）
     ├── run_weather_ollama.sh                   # qwen実行スクリプト（launchd 08:00）
     ├── run_weather_ornith.sh                   # ornith実行スクリプト（launchd 09:30）
     ├── run_weather_nemotron.sh                 # nemotron実行スクリプト（launchd 10:30）
+    ├── run_weather_qwen38.sh                   # qwen3.8実行スクリプト（launchd 11:00）
     ├── run_weather_haiku.sh                    # Haiku実行スクリプト（launchd 12:00）
     ├── com.user.weather_digest_ollama.plist    # launchd設定（08:00）
     ├── com.user.weather_digest_ornith.plist    # launchd設定（09:30）
     ├── com.user.weather_digest_nemotron.plist  # launchd設定（10:30）
+    ├── com.user.weather_digest_qwen38.plist    # launchd設定（11:00）
     └── com.user.weather_digest_haiku.plist     # launchd設定（12:00）
 ```
 
@@ -92,6 +98,10 @@ weather_digest/
 
 一覧は [articles/nemotron_weekly/](./articles/nemotron_weekly/) を参照（比較ページにも掲載）。
 
+### qwen3.8週次まとめ（Ollama / qwen3.8:27b-mlx）
+
+一覧は [articles/qwen38_weekly/](./articles/qwen38_weekly/) を参照（比較ページにも掲載）。
+
 ### Haiku週次まとめ（Claude Haiku）
 
 - [9/13〜9/20](./articles/haiku_weekly/2026-0920.md)
@@ -113,7 +123,7 @@ weather_digest/
 - [2026年9月](./articles/haiku_monthly/2026-09.md)
 <!-- articles/haiku_monthly/ のファイルへのリンクがここに追加される -->
 
-### モデル比較（qwen / ornith / nemotron / Haiku）
+### モデル比較（qwen / ornith / nemotron / qwen3.8 / Haiku）
 
 <!-- 比較記事リンクがここに追加されます -->
 
@@ -121,13 +131,7 @@ weather_digest/
 
 - [2026年9月](./articles/monthly/2026-09.md)
 - [2026年8月](./articles/monthly/2026-08.md)
-- [2026年8月](./articles/monthly/2026-08.md)
-- [2026年8月](./articles/monthly/2026-08.md)
 - [2026年7月](./articles/monthly/2026-07.md)
-- [2026年7月](./articles/monthly/2026-07.md)
-- [2026年7月](./articles/monthly/2026-07.md)
-- [2026年6月](./articles/monthly/2026-06.md)
-- [2026年6月](./articles/monthly/2026-06.md)
 - [2026年6月](./articles/monthly/2026-06.md)
 <!-- 月次記事リンクがここに追加されます -->
 
@@ -146,12 +150,13 @@ weather_digest/
 | 毎週日曜 08:00 JST | Ollama（qwen）が週次記事を自動生成・git push |
 | 毎週日曜 09:30 JST | Ollama（ornith-1.5）が同じ週の記事を別ファイルに生成 |
 | 毎週日曜 10:30 JST | Ollama（nemotron-3.5-lightning）が同じ週の記事を別ファイルに生成 |
-| 毎週日曜 12:00 JST | Claude Haiku が同じ週の記事を別ファイルに生成 → 4モデル比較ページを自動作成 |
-| 毎月第1日曜 08:00〜10:30 JST | 上記各ローカルLLMが月次まとめも生成 |
+| 毎週日曜 11:00 JST | Ollama（qwen3.8）が同じ週の記事を別ファイルに生成 |
+| 毎週日曜 12:00 JST | Claude Haiku が同じ週の記事を別ファイルに生成 → 最大5モデル比較ページを自動作成 |
+| 毎月第1日曜 08:00〜11:00 JST | 上記各ローカルLLMが月次まとめも生成 |
 | 毎月第1日曜 12:00 JST | 上記に加えて Haiku 月次まとめも生成 |
 
 比較ページは Haiku 完了後に生成され、その時点で存在する記事だけを並べる
-（qwen と Haiku は必須、ornith / nemotron はその週の記事があれば追加）。
+（qwen と Haiku は必須、ornith / nemotron / qwen3.8 はその週の記事があれば追加）。
 
 ### 使用モデル
 
@@ -160,6 +165,7 @@ weather_digest/
 | 08:00 | `qwen3.6:35b-mlx` | Ollama ローカルLLM |
 | 09:30 | `ornith-1.5:35b` | Ollama ローカルLLM |
 | 10:30 | `nemotron-3.5-lightning:30b-mlx` | Ollama ローカルLLM |
+| 11:00 | `qwen3.8:27b-mlx` | Ollama ローカルLLM |
 | 12:00 | `claude-haiku-4-5` | Claude Code CLI（Pro/Maxサブスクリプション） |
 | 比較評価 | `claude-sonnet-4-6` | Claude Code CLI（Pro/Maxサブスクリプション） |
 
@@ -170,6 +176,7 @@ weather_digest/
 bash ~/projects/weather_digest/scripts/run_weather_ollama.sh    # qwen（08:00相当）
 bash ~/projects/weather_digest/scripts/run_weather_ornith.sh    # ornith（09:30相当）
 bash ~/projects/weather_digest/scripts/run_weather_nemotron.sh  # nemotron（10:30相当）
+bash ~/projects/weather_digest/scripts/run_weather_qwen38.sh    # qwen3.8（11:00相当）
 
 # Haiku版（12:00相当）を今すぐ実行
 bash ~/projects/weather_digest/scripts/run_weather_haiku.sh
@@ -178,6 +185,7 @@ bash ~/projects/weather_digest/scripts/run_weather_haiku.sh
 tail -f ~/projects/weather_digest/weather_digest.log
 tail -f ~/projects/weather_digest/weather_digest_ornith.log
 tail -f ~/projects/weather_digest/weather_digest_nemotron.log
+tail -f ~/projects/weather_digest/weather_digest_qwen38.log
 tail -f ~/projects/weather_digest/weather_digest_haiku.log
 ```
 
