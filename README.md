@@ -124,6 +124,7 @@ weather_digest/
 
 ### Haiku月次まとめ（Claude Haiku）
 
+- [2026年10月](./articles/haiku_monthly/2026-10.md)
 - [2026年9月](./articles/haiku_monthly/2026-09.md)
 <!-- articles/haiku_monthly/ のファイルへのリンクがここに追加される -->
 
