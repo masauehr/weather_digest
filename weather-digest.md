@@ -448,3 +448,15 @@ python3 ~/projects/weather_digest/scripts/generate_compare.py \
 python3 ~/projects/weather_digest/scripts/generate_compare.py \
   --week-file MMDD --week-label "M/D〜M/D" --year YYYY --force
 ```
+
+### 偽情報・不審サイトを見つけたとき（2026-10-07 の対応例）
+
+10/4週で「気象庁がAI台風進路予測を実運用し精度30%向上」という偽情報の疑いがあるニュースを、
+複数モデルが不審サイト（nihonnews.jp.net）の出典付きで掲載した。対応手順:
+
+1. `grep -rn "不審ドメイン" articles index.md` で全出現箇所を洗い出す
+2. 各モデルの記事・月次・トップ（index.md）から出典リンクを削除（表内は「リンク削除」表記に置換）
+3. `articles/compare/` と `index.md` の Sonnet 評価欄に注意喚起（⚠️）を追記
+4. `--force` で評価を再生成すると注意喚起が消えるので、再生成後は手で再追記する
+
+5. 研究段階の事実があれば補足を併記する（例: JMSJ 2025-018 で2日先進路誤差が最大19%改善、台風進路予測へのAI活用は気象庁「数値予報戦略」の2030年ごろの開発項目）
