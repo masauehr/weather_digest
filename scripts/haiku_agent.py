@@ -31,6 +31,8 @@ import sys
 from datetime import datetime, timezone, timedelta
 from pathlib import Path
 
+from link_guard import BLOCK_DOMAINS, format_report, sanitize_links
+
 PROJECT_DIR = Path(__file__).resolve().parent.parent
 JST = timezone(timedelta(hours=9))
 DEFAULT_MODEL = "haiku"
@@ -341,6 +343,8 @@ def run_claude_cli(prompt: str, model: str, budget_usd: str, timeout_sec: int = 
         "--model", model,
         "--max-budget-usd", budget_usd,
         "--allowedTools", "WebSearch,WebFetch,Write,Read",
+        # 不審サイトへの WebFetch を拒否（取得自体を防ぐ。記事内リンクは保存後に link_guard で検査）
+        "--disallowedTools", ",".join(f"WebFetch(domain:{d})" for d in sorted(BLOCK_DOMAINS)),
         "--input-format", "text",
         "--output-format", "json",   # usage / コストを取得して計測するため
     ]
@@ -419,9 +423,13 @@ def run_agent(args) -> bool:
             log(f"ERROR: 想定外のファイルが変更されました: {unexpected} → 安全のため後処理を中断します")
             return False
 
-        if not article_path.read_text(encoding="utf-8").startswith("---"):
-            content = JEKYLL_FRONT_MATTER + article_path.read_text(encoding="utf-8")
-            article_path.write_text(content, encoding="utf-8")
+        content = article_path.read_text(encoding="utf-8")
+        if not content.startswith("---"):
+            content = JEKYLL_FRONT_MATTER + content
+        # 公開前にリンクを検査し、許可リスト外の出典はリンクを外す
+        content, removed = sanitize_links(content)
+        log(format_report(removed))
+        article_path.write_text(content, encoding="utf-8")
 
         log(f"記事生成完了: {article_rel}")
 

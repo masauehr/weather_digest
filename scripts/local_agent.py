@@ -25,6 +25,8 @@ import requests
 from ddgs import DDGS
 import trafilatura
 
+from link_guard import format_report, is_fetch_blocked, sanitize_links
+
 PROJECT_DIR = Path(__file__).resolve().parent.parent
 OLLAMA_BASE = "http://localhost:11434"
 JST = timezone(timedelta(hours=9))
@@ -210,6 +212,10 @@ def tool_search_web(query: str, max_results: int = 8) -> str:
 
 def tool_fetch_url(url: str) -> str:
     log(f"fetch_url: {url}")
+    # 偽情報・詐欺サイトの疑いがあるドメインには自宅 Mac からアクセスしない
+    if is_fetch_blocked(url):
+        log(f"fetch_url 拒否（link_guard）: {url}")
+        return "fetch_url エラー: 不審サイトのため取得を拒否しました。このサイトの情報は記事に使わないこと。"
     try:
         downloaded = trafilatura.fetch_url(url)
         if downloaded:
@@ -238,8 +244,13 @@ def tool_write_article(path: str, content: str) -> str:
     full.parent.mkdir(parents=True, exist_ok=True)
     if not content.startswith("---"):
         content = JEKYLL_FRONT_MATTER + content
+    # 公開前にリンクを検査し、許可リスト外の出典はリンクを外す
+    content, removed = sanitize_links(content)
+    log(format_report(removed))
     full.write_text(content, encoding="utf-8")
     log(f"write_article: {path} ({len(content)} chars)")
+    if removed:
+        return f"書き込み完了: {path}（未確認・不審な出典のリンク {len(removed)} 件を自動で外しました）"
     return f"書き込み完了: {path}"
 
 
