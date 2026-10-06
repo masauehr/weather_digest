@@ -43,7 +43,7 @@ EVAL_AXES = ["情報の正確性", "カバレッジ", "独自性", "読みやす
 # 採点スコアを共有台帳（agent_orchestrator/var/ledger.jsonl）へ記録するシム。
 # agent_orchestrator が無い環境でも本処理を止めないよう、失敗時は無害な no-op にする。
 try:
-    sys.path.insert(0, "/Users/masahiro/projects/agent_orchestrator")
+    sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "agent_orchestrator"))
     from orch_meter import (
         eval_json_instruction as _eval_json_instruction,
         parse_eval_scores as _parse_eval_scores,

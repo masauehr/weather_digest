@@ -4,7 +4,8 @@
 
 set -euo pipefail
 
-PROJECT_DIR="/Users/masahiro/projects/weather_digest"
+# スクリプトの位置（scripts/ の1つ上）をプロジェクトディレクトリとする（絶対パスを埋め込まない）
+PROJECT_DIR="$(cd "$(dirname "$0")/.." && pwd)"
 LOG_FILE="${PROJECT_DIR}/weather_digest.log"
 PYTHON_BIN="/opt/anaconda3/bin/python3"
 OLLAMA_MODEL="${OLLAMA_MODEL:-qwen3.6:35b-mlx}"

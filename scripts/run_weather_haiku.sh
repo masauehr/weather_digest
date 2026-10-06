@@ -9,7 +9,8 @@
 
 set -euo pipefail
 
-PROJECT_DIR="/Users/masahiro/projects/weather_digest"
+# スクリプトの位置（scripts/ の1つ上）をプロジェクトディレクトリとする（絶対パスを埋め込まない）
+PROJECT_DIR="$(cd "$(dirname "$0")/.." && pwd)"
 LOG_FILE="${PROJECT_DIR}/weather_digest_haiku.log"
 PYTHON_BIN="/opt/anaconda3/bin/python3"
 CLAUDE_BIN="${HOME}/.local/bin/claude"
@@ -73,7 +74,7 @@ HAIKU_MONTHLY_FILE="${PROJECT_DIR}/articles/haiku_monthly/${YEAR}-${MONTH}.md"
 
 # --- フェーズ2: オーケストレーターで事前収集＋ローカル要約（失敗しても続行）---
 # 検索 → 本文取得 → ローカル(Ollama)で圧縮要約。Haiku には生本文でなく圧縮サマリだけを渡す。
-ORCH_DIR="/Users/masahiro/projects/agent_orchestrator"
+ORCH_DIR="$(cd "${PROJECT_DIR}/.." && pwd)/agent_orchestrator"
 PREFETCH_FILE="${PROJECT_DIR}/var/prefetch_${YEAR}-${WEEK_FILE_MMDD}.txt"
 PREFETCH_ARG=""
 mkdir -p "${PROJECT_DIR}/var"

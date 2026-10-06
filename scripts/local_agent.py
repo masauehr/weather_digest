@@ -608,8 +608,8 @@ def build_system_prompt(args) -> str:
 #     import・記録に失敗しても本処理は継続する（挙動は変えない）。 ---
 try:
     import sys as _sys
-    if "/Users/masahiro/projects/agent_orchestrator" not in _sys.path:
-        _sys.path.insert(0, "/Users/masahiro/projects/agent_orchestrator")
+    if str(Path(__file__).resolve().parents[2] / "agent_orchestrator") not in _sys.path:
+        _sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "agent_orchestrator"))
     from orch_meter import record_ollama_response as _rec_ollama
 
     def _meter_ollama(model, data):

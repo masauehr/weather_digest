@@ -314,7 +314,7 @@ def build_prompt(args) -> str:
 # --- オーケストレーション計測（フェーズ1b）: サブスク利用枠の消費を共有台帳へ記録。
 #     import・記録に失敗しても本処理は継続する。 ---
 try:
-    sys.path.insert(0, "/Users/masahiro/projects/agent_orchestrator")
+    sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "agent_orchestrator"))
     from orch_meter import record_llm as _orch_record_llm
 
     def _rec_haiku(model, in_tok, out_tok, wall_s, usd, is_error):

@@ -18,3 +18,7 @@ var/
 
 # エディタ/ツール
 .claude/
+
+# 個人情報を含むファイル（ローカル専用。非公開リポジトリ masauehr/local_configs で管理し、ここへはシンボリックリンク）
+CLAUDE.md
+scripts/com.user.weather_digest_*.plist
