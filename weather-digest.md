@@ -474,3 +474,11 @@ python3 ~/projects/weather_digest/scripts/generate_compare.py \
 - Sonnet 評価は、これらの注記や裏付けのない断定的な主張があれば、評価冒頭で注意喚起する
 - 信頼できる出典が省略されていたら、ログの `link_guard:` 行を見て `ALLOW_DOMAINS` に追加する
 - 不審サイトを見つけたら `BLOCK_DOMAINS` に追加する
+
+### ローカル専用ファイルの管理（2026-10-07 変更）
+
+- `CLAUDE.md` と launchd の plist（`scripts/com.user.weather_digest_*.plist`）は公開しない。実体は非公開リポジトリ
+  `masauehr/local_configs` に置き、weather_digest にはシンボリックリンクを置いている（詳しくは local-configs.md）。
+- `CLAUDE.md` は全履歴から `git filter-repo` で削除し強制 push した。
+- 実行スクリプト（`run_weather_*.sh`）と Python スクリプトの絶対パスは、ファイル位置からの相対解決に書き換えた。
+- launchd 登録手順の `cp scripts/com.user.*.plist ~/Library/LaunchAgents/` はシンボリックリンク経由でそのまま使える。
