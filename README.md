@@ -110,6 +110,7 @@ weather_digest/
 
 ### Haiku週次まとめ（Claude Haiku）
 
+- [10/25〜11/1](./articles/haiku_weekly/2026-1101.md)
 - [10/18〜10/25](./articles/haiku_weekly/2026-1025.md)
 - [10/11〜10/18](./articles/haiku_weekly/2026-1018.md)
 - [10/4〜10/11](./articles/haiku_weekly/2026-1011.md)
